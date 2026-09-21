@@ -1,7 +1,7 @@
 import { demoOpportunities, demoProducts } from "./demo-data";
 import { hasOpenAI, hasSyften, isLiveMode } from "./runtime";
 import type { ActivityItem, AutomationStatus, OpportunityStatus, OpportunityView, Product } from "./types";
-import { relativeTime } from "./utils";
+import { cleanSourceText, relativeTime } from "./utils";
 import { createAdminClient } from "./supabase/admin";
 import { routeProducts } from "./routing/product-router";
 
@@ -24,8 +24,8 @@ function mapOpportunity(row: any, productRows: Product[]): OpportunityView {
     platform: row.platform,
     community: row.community,
     author: row.author,
-    title: row.title,
-    content: row.content,
+    title: cleanSourceText(row.title),
+    content: cleanSourceText(row.content),
     original_url: row.original_url,
     published_at: row.published_at,
     detected_at: row.detected_at,
@@ -160,8 +160,8 @@ export async function getAutomationStatus(): Promise<AutomationStatus> {
   const cursor: any = values.get("syften_cursor");
 
   return {
-    syftenConnected: hasSyften(),
-    openAIConnected: hasOpenAI(),
+    syftenConnected: Boolean(syftenRun?.at || cursor?.matched_on || hasSyften()),
+    openAIConnected: Boolean(pipelineRun?.at || hasOpenAI()),
     lastSyftenCheck: syftenRun?.at ?? null,
     lastPipelineRun: pipelineRun?.at ?? null,
     lastSyftenCursor: cursor?.matched_on ?? null,
