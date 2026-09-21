@@ -1,4 +1,5 @@
 import { adminClient, json } from "../_shared/client.ts";
+import { cronRequestAuthorized } from "../_shared/cron-auth.ts";
 
 async function invoke(name: string, body: unknown) {
   const url = Deno.env.get("SUPABASE_URL");
@@ -9,7 +10,8 @@ async function invoke(name: string, body: unknown) {
   return data;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
+  if (!cronRequestAuthorized(req)) return json({ error: "Unauthorized" }, 401);
   try {
     const supabase = adminClient();
     const { data: fresh, error } = await supabase.from("opportunities").select("id,status").in("status", ["new","qualified"]).order("detected_at").limit(10);
