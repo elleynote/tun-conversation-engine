@@ -20,6 +20,20 @@ Deno.serve(async (req: Request) => {
     const { data: classification, error: classError } = await supabase.from("classifications").select("*").eq("opportunity_id", opportunity_id).single();
     if (classError) throw classError;
 
+    let threadContext = "";
+    if (opportunity.thread_key) {
+      const { data: threadRows, error: threadError } = await supabase
+        .from("opportunities")
+        .select("content,is_thread_root,detected_at")
+        .eq("thread_key", opportunity.thread_key)
+        .order("is_thread_root", { ascending: false })
+        .order("detected_at", { ascending: true });
+      if (threadError) throw threadError;
+      threadContext = (threadRows ?? []).map((r: any, i: number) =>
+        `${r.is_thread_root ? "ROOT POST" : `COMMENT ${i}`}: ${r.content || ""}`
+      ).join("\n\n");
+    }
+
     if (!classification.should_reply || classification.response_mode === "do_not_reply") {
       await supabase.from("opportunities").update({ status: "ignored", updated_at: new Date().toISOString() }).eq("id", opportunity_id);
       return json({ ok: true, ignored: true, reason: "classification says do not reply" });
@@ -55,10 +69,11 @@ Rules:
 - If exact Armenian wording, translation, pronunciation, dialect or grammar is uncertain, do not guess.
 - Mention Tun's 4 lessons for $1 only when Tun is genuinely relevant and it fits naturally.
 - Respect community rules and avoid sensitive/inappropriate promotion.
+- Use the full thread context to avoid repeating an answer that another commenter has already given.
 - Return only final reply text.
 
 Brand voice: ${brand?.value?.text || "Helpful, warm, practical and not salesy."}\nCommunity rules: ${rules?.rules_text || "No special rules supplied."}`,
-      input: `Community: ${opportunity.community || "unknown"}\nTitle: ${opportunity.title || ""}\nConversation: ${opportunity.content}\nIntent: ${classification.intent}\nResponse mode: ${classification.response_mode}\nAnswer confidence: ${classification.answer_confidence}\nApproved resources:\n${approvedProductContext(products)}`,
+      input: `Community: ${opportunity.community || "unknown"}\nTitle: ${opportunity.title || ""}\nPrimary conversation: ${opportunity.content}\n\nFull thread context:\n${threadContext || "(no additional thread context)"}\n\nIntent: ${classification.intent}\nResponse mode: ${classification.response_mode}\nAnswer confidence: ${classification.answer_confidence}\nApproved resources:\n${approvedProductContext(products)}`,
     });
     const body = outputText(result).trim();
     if (!body) {
