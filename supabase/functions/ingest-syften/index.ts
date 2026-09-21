@@ -13,7 +13,7 @@ Deno.serve(async () => {
     const res = await fetch("https://syften.com/api/0.1/items/get", {
       method: "POST",
       headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      body: JSON.stringify({ limit: 100, show: "all", ...(after ? { after } : {}) }),
+      body: JSON.stringify({ limit: 100, show: "ai_accepted", ...(after ? { after } : {}) }),
     });
     const payload = await res.json();
     if (!res.ok) throw new Error(payload?.error || `Syften error ${res.status}`);
