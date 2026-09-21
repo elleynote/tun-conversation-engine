@@ -73,14 +73,16 @@ Deno.serve(async (req: Request) => {
       text: { format: { type: "json_schema", name: "tun_opportunity_classification", strict: true, schema } },
     });
     const parsed = JSON.parse(outputText(result));
-    const keys = Array.isArray(parsed.recommended_product_keys) ? parsed.recommended_product_keys.slice(0, 3) : [];
+    const rawKeys = Array.isArray(parsed.recommended_product_keys) ? parsed.recommended_product_keys.slice(0, 3) : [];
+    const noReply = parsed.response_mode === "do_not_reply" || !parsed.should_reply;
+    const keys = noReply ? [] : rawKeys;
     const row = {
       opportunity_id,
       relevance_score: parsed.relevance_score,
       intent: parsed.intent,
       dialect: parsed.dialect,
       commercial_intent: parsed.commercial_intent,
-      recommended_product_key: parsed.recommended_product_key || keys[0] || null,
+      recommended_product_key: noReply ? null : (parsed.recommended_product_key || keys[0] || null),
       recommended_product_keys: keys,
       response_mode: parsed.response_mode,
       answer_confidence: parsed.answer_confidence,
