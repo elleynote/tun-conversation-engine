@@ -26,6 +26,19 @@ export function OpportunityReview({ opportunity }: { opportunity: OpportunityVie
     } finally { setBusy(false); }
   }
 
+  if (status === "ignored" && !draft.trim()) {
+    return (
+      <div className="card panel">
+        <div className="section-head">
+          <div><div className="eyebrow">AI decision</div><h2>No reply recommended</h2></div>
+          <span className="badge red">ignored</span>
+        </div>
+        <p className="muted">This conversation stays in the audit history but is not sent to the human reply queue.</p>
+        {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">Open original Reddit ↗</a> : null}
+      </div>
+    );
+  }
+
   return (
     <div className="card panel">
       <div className="section-head">
@@ -45,7 +58,7 @@ export function OpportunityReview({ opportunity }: { opportunity: OpportunityVie
       {message ? <p className="small muted">{message}</p> : null}
       <div className="divider" />
       <div className="notice">
-        Phase 1 rule: dashboard approval is an internal review step, not a Reddit post. The final publishing action stays disabled until Reddit confirms the approved route. If Devvit posts as the user, Reddit requires a separate explicit user action before the comment is submitted.
+        Phase 1 rule: dashboard approval is an internal review step, not a Reddit post. The final publishing action stays disabled until Reddit confirms the approved route.
       </div>
     </div>
   );
