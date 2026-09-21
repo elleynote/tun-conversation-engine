@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="sidebar-note">
           Phase 1: Reddit<br />
-          Human approval before publishing
+          AI-assisted review + manual posting
         </div>
       </aside>
       <main className="content"><div className="page">{children}</div></main>

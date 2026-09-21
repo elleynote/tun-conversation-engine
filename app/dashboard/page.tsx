@@ -15,7 +15,7 @@ export default async function DashboardPage() {
   ]);
   const status = connectionStatus();
   const pending = opportunities.filter((x) => ["drafted", "awaiting_review"].includes(x.status)).length;
-  const qualified = opportunities.filter((x) => (x.classification?.relevance_score ?? 0) >= 3 && x.status !== "ignored").length;
+  const qualified = opportunities.filter((x) => (x.classification?.relevance_score ?? 0) >= 3 && !["ignored", "rejected"].includes(x.status)).length;
   const posted = opportunities.filter((x) => x.status === "posted").length;
   const priorityOrder: Record<string, number> = { awaiting_review: 0, drafted: 0, qualified: 1, new: 1, classified: 1, approved: 2, rejected: 3, ignored: 4, posted: 5 };
   const recent = [...opportunities].sort((a, b) => {
@@ -49,13 +49,13 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <div className="success-note section"><strong>Dashboard notifications:</strong> new qualified drafts appear under Needs review. Thread-only Reddit comments are automatically hidden from the normal queue.</div>
+      <div className="success-note section"><strong>Dashboard notifications:</strong> new qualified drafts appear under Needs review. Thread comments stay nested under the main conversation unless a reviewer manually promotes one.</div>
 
       <div className="grid-stats section">
-        <StatCard label="Detected" value={opportunities.length} hint="canonical conversations" />
-        <StatCard label="Qualified" value={qualified} hint="relevant and actionable" />
-        <StatCard label="Needs review" value={pending} hint="drafted responses" />
-        <StatCard label="Posted" value={posted} hint="after approval" />
+        <StatCard label="Detected" value={opportunities.length} hint="canonical conversations" href="/opportunities" />
+        <StatCard label="Qualified" value={qualified} hint="relevance 3-5" href="/opportunities?status=qualified" />
+        <StatCard label="Needs review" value={pending} hint="drafted responses" href="/opportunities?status=awaiting_review" />
+        <StatCard label="Posted" value={posted} hint="manually posted" href="/opportunities?status=posted" />
       </div>
 
       <section className="section">

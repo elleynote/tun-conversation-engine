@@ -65,6 +65,19 @@ export type ActivityItem = {
   created_at: string;
 };
 
+export type ThreadItem = {
+  id: string;
+  author: string | null;
+  author_avatar_url?: string | null;
+  content: string;
+  original_url: string | null;
+  detected_at: string;
+  relativeTime: string;
+  is_thread_root: boolean;
+  status: OpportunityStatus;
+  suppression_reason: string | null;
+};
+
 export type AutomationStatus = {
   syftenConnected: boolean;
   openAIConnected: boolean;
@@ -79,6 +92,7 @@ export type OpportunityView = {
   platform: string;
   community: string | null;
   author: string | null;
+  author_avatar_url?: string | null;
   title: string | null;
   content: string;
   original_url: string | null;
@@ -95,4 +109,6 @@ export type OpportunityView = {
   products?: Product[];
   draft?: Draft | null;
   activity?: ActivityItem[];
+  thread_items?: ThreadItem[];
 };
+

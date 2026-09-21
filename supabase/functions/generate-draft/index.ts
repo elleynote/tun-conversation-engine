@@ -1,4 +1,4 @@
-import { adminClient, json } from "../_shared/client.ts";
+﻿import { adminClient, json } from "../_shared/client.ts";
 import { outputText, responses } from "../_shared/openai.ts";
 
 function approvedProductContext(products: any[]) {
@@ -6,7 +6,11 @@ function approvedProductContext(products: any[]) {
   return products.map((p) => {
     const claims = Array.isArray(p.metadata?.claims) ? p.metadata.claims.join(" | ") : "";
     const offer = typeof p.metadata?.offer === "string" ? p.metadata.offer : "";
-    return `${p.name}\nURL: ${p.url || "URL pending confirmation"}\nDescription: ${p.description}\nApproved claims: ${claims || "none supplied"}\nOffer: ${offer || "none supplied"}`;
+    return `${p.name}
+URL: ${p.url || "URL pending confirmation"}
+Description: ${p.description}
+Approved claims: ${claims || "none supplied"}
+Offer: ${offer || "none supplied"}`;
   }).join("\n\n");
 }
 
@@ -53,7 +57,7 @@ Deno.serve(async (req: Request) => {
     const result = await responses({
       model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra",
       reasoning: { effort: "low" },
-      instructions: `Write one natural public reply for Tun's Armenian-language ecosystem.
+      instructions: `Write one natural public Reddit reply for Tun's Armenian-language ecosystem.
 
 Follow response_mode exactly:
 - answer_and_recommend: briefly answer the actual question first, then naturally recommend only approved resources below.
@@ -62,28 +66,96 @@ Follow response_mode exactly:
 - do_not_reply: return an empty string.
 
 Rules:
+- Speak as Tun / our own ecosystem. When referring to Tun or our tools, use first-person language such as "we" and "our", not "they" or "their".
+- If the Tun school offer is relevant, use the approved wording: "We offer 4 lessons for $1." Do not say "They offer 4 lessons for $1."
 - Be concise, warm, practical, human and transparent.
-- Never pretend to be an unaffiliated ordinary user.
+- Do not pretend to be an unaffiliated ordinary Reddit user.
 - Do not dump several products simply because they exist.
 - Use only approved claims/URLs below.
+- The classifier has already selected the relevant resources. For answer_and_recommend or recommend_only, if more than one approved resource is supplied, mention EVERY supplied approved resource exactly once. Do not silently drop one of the classifier-selected resources.
+- When both the Armenian Verb Conjugation Tool and English to Armenian Translation are approved, naturally explain the distinct value of both: use armenianverbs.com for verb forms/tenses and translatearmenian.com for quick English-to-Western-Armenian translation.
 - If exact Armenian wording, translation, pronunciation, dialect or grammar is uncertain, do not guess.
-- Mention Tun's 4 lessons for $1 only when Tun is genuinely relevant and it fits naturally.
+- An existing answer elsewhere in the thread does not automatically prevent a reply. Add distinct value instead of repeating what is already there.
+- Default to one useful reply to the thread. Do not address every comment unless a reviewer separately promotes a comment as its own opportunity.
 - Respect community rules and avoid sensitive/inappropriate promotion.
-- Use the full thread context to avoid repeating an answer that another commenter has already given.
 - Return only final reply text.
 
-Brand voice: ${brand?.value?.text || "Helpful, warm, practical and not salesy."}\nCommunity rules: ${rules?.rules_text || "No special rules supplied."}`,
-      input: `Community: ${opportunity.community || "unknown"}\nTitle: ${opportunity.title || ""}\nPrimary conversation: ${opportunity.content}\n\nFull thread context:\n${threadContext || "(no additional thread context)"}\n\nIntent: ${classification.intent}\nResponse mode: ${classification.response_mode}\nAnswer confidence: ${classification.answer_confidence}\nApproved resources:\n${approvedProductContext(products)}`,
+Brand voice: ${brand?.value?.text || "Helpful, warm, practical and not salesy."}
+Community rules: ${rules?.rules_text || "No special rules supplied."}`,
+      input: `Community: ${opportunity.community || "unknown"}
+Title: ${opportunity.title || ""}
+Primary conversation: ${opportunity.content}
+
+Full thread context:
+${threadContext || "(no additional thread context)"}
+
+Intent: ${classification.intent}
+Response mode: ${classification.response_mode}
+Answer confidence: ${classification.answer_confidence}
+Approved resources:
+${approvedProductContext(products)}`,
     });
-    const body = outputText(result).trim();
+    let body = outputText(result).trim();
+    let finalResponseId = result.id;
+
+    // Deterministic guard: when the classifier intentionally selected multiple
+    // resources for a recommendation response, the final draft must include
+    // every selected resource URL. If the first model pass drops one, repair
+    // the draft once rather than silently publishing an incomplete recommendation.
+    const recommendationMode =
+      classification.response_mode === "answer_and_recommend" ||
+      classification.response_mode === "recommend_only";
+    const requiredUrls = recommendationMode
+      ? products
+          .map((p: any) => typeof p.url === "string" ? p.url.trim() : "")
+          .filter((url: string) => Boolean(url))
+      : [];
+    const missingUrls = requiredUrls.filter(
+      (url: string) => !body.toLowerCase().includes(url.toLowerCase())
+    );
+
+    if (body && missingUrls.length > 0) {
+      const repaired = await responses({
+        model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra",
+        reasoning: { effort: "low" },
+        instructions: `Revise the supplied Reddit reply without changing its useful answer.
+
+Requirements:
+- Keep it concise, warm, practical, human and not salesy.
+- Speak as Tun / our ecosystem using "we" and "our" where appropriate.
+- Preserve the original answer unless a wording change is needed for flow.
+- Include EVERY required approved resource URL exactly once.
+- Do not add any unapproved resource, claim, offer or URL.
+- When both armenianverbs.com and translatearmenian.com are required, explain their distinct uses naturally: the verb tool is for verb forms/tenses, and the translation tool is for quick English-to-Western-Armenian translation.
+- Return only the final revised reply text.`,
+        input: `Current reply:
+${body}
+
+Required approved resource URLs:
+${requiredUrls.join("\n")}`,
+      });
+
+      const repairedBody = outputText(repaired).trim();
+      if (repairedBody) {
+        const stillMissing = requiredUrls.filter(
+          (url: string) => !repairedBody.toLowerCase().includes(url.toLowerCase())
+        );
+        if (stillMissing.length === 0) {
+          body = repairedBody;
+          finalResponseId = repaired.id;
+        }
+      }
+    }
+
     if (!body) {
       await supabase.from("opportunities").update({ status: "ignored", updated_at: new Date().toISOString() }).eq("id", opportunity_id);
       return json({ ok: true, ignored: true, reason: "empty draft" });
     }
     const { data: latest } = await supabase.from("drafts").select("version").eq("opportunity_id", opportunity_id).order("version", { ascending: false }).limit(1);
     const version = (latest?.[0]?.version || 0) + 1;
-    await supabase.from("drafts").insert({ opportunity_id, version, body, model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra", status: "generated", metadata: { response_id: result.id, response_mode: classification.response_mode, product_keys: keys } });
+    await supabase.from("drafts").insert({ opportunity_id, version, body, model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra", status: "generated", metadata: { response_id: finalResponseId, response_mode: classification.response_mode, product_keys: keys } });
     await supabase.from("opportunities").update({ status: "awaiting_review", updated_at: new Date().toISOString() }).eq("id", opportunity_id);
     return json({ ok: true, draft: body, version });
   } catch (error) { return json({ error: error instanceof Error ? error.message : String(error) }, 500); }
 });
+

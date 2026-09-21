@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { OpportunityReview } from "@/components/opportunity-review";
+import { ThreadContext } from "@/components/thread-context";
+import { UserAvatar } from "@/components/user-avatar";
 import { getOpportunity } from "@/lib/repository";
 import { relativeTime } from "@/lib/utils";
 
@@ -9,11 +11,10 @@ export const dynamic = "force-dynamic";
 function ignoredLabel(reason?: string | null, aiReason?: string | null) {
   if (reason === "thread_context_only") return "Thread context only";
   const text = (aiReason || "").toLowerCase();
-  if (text.includes("already") || text.includes("answered")) return "Already answered";
   if (text.includes("culture") || text.includes("history")) return "Culture/history only";
   if (text.includes("sensitive") || text.includes("griev")) return "Sensitive topic";
   if (text.includes("promotion") || text.includes("forced")) return "Promotion would be forced";
-  return "No reply recommended";
+  return "AI did not recommend a reply";
 }
 
 export default async function OpportunityPage({ params }: { params: Promise<{ id: string }> }) {
@@ -27,13 +28,13 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
         <div>
           <div className="eyebrow">{o.platform} • {o.community ?? "Public conversation"}</div>
           <h1>Review opportunity</h1>
-          <div className="muted">Detected {o.relativeTime} • @{o.author ?? "unknown"}{o.thread_key ? ` • ${o.thread_key}` : ""}</div>
+          <div className="review-author-row"><UserAvatar author={o.author} avatarUrl={o.author_avatar_url} size="md" /><div><strong>{o.author ? `u/${o.author.replace(/^u\//, "")}` : "Unknown user"}</strong><div className="small muted">Detected {o.relativeTime}{o.thread_key ? ` • ${o.thread_key}` : ""}</div></div></div>
         </div>
-        {o.original_url ? <a className="btn secondary" href={o.original_url} target="_blank" rel="noreferrer">Open original Reddit ↗</a> : null}
+        {o.original_url ? <a className="btn secondary" href={o.original_url} target="_blank" rel="noreferrer">View full Reddit thread ↗</a> : null}
       </div>
 
       {o.status === "ignored" ? (
-        <div className="notice ignored-banner"><strong>Not queued for reply:</strong> {ignoredLabel(o.suppression_reason, o.classification?.reason)}</div>
+        <div className="notice ignored-banner"><strong>AI did not queue a reply:</strong> {ignoredLabel(o.suppression_reason, o.classification?.reason)}. A reviewer can override this decision from the reply panel.</div>
       ) : null}
 
       <div className="columns section">
@@ -54,6 +55,8 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
 
         <OpportunityReview opportunity={o} />
       </div>
+
+      {o.thread_items?.length ? <ThreadContext items={o.thread_items} currentId={o.id} /> : null}
 
       <section className="card panel section">
         <div className="section-head"><div><div className="eyebrow">Audit trail</div><h2>Activity</h2></div></div>

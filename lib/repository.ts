@@ -1,9 +1,24 @@
 import { demoOpportunities, demoProducts } from "./demo-data";
 import { hasOpenAI, hasSyften, isLiveMode } from "./runtime";
-import type { ActivityItem, AutomationStatus, OpportunityStatus, OpportunityView, Product } from "./types";
+import type { ActivityItem, AutomationStatus, OpportunityStatus, OpportunityView, Product, ThreadItem } from "./types";
 import { cleanSourceText, relativeTime } from "./utils";
 import { createAdminClient } from "./supabase/admin";
 import { routeProducts } from "./routing/product-router";
+
+function avatarFromRow(row: any): string | null {
+  const item = row?.raw_payload?.item ?? {};
+  const values = [
+    item.author_avatar,
+    item.authorAvatar,
+    item.avatar,
+    item.profile_image,
+    item.profileImage,
+    item.author_image,
+    item.authorImage,
+    row?.source_analysis?.avatar,
+  ];
+  return values.find((value) => typeof value === "string" && /^https?:\/\//i.test(value)) ?? null;
+}
 
 function mapOpportunity(row: any, productRows: Product[]): OpportunityView {
   const rawClassification = Array.isArray(row.classifications) ? row.classifications[0] : row.classifications;
@@ -26,6 +41,7 @@ function mapOpportunity(row: any, productRows: Product[]): OpportunityView {
     platform: row.platform,
     community: row.community,
     author: row.author,
+    author_avatar_url: avatarFromRow(row),
     title: cleanSourceText(row.title),
     content: cleanSourceText(row.content),
     original_url: row.original_url,
@@ -45,7 +61,7 @@ function mapOpportunity(row: any, productRows: Product[]): OpportunityView {
 }
 
 export async function listOpportunities(options: { includeSuppressed?: boolean } = {}): Promise<OpportunityView[]> {
-  if (!isLiveMode()) return demoOpportunities;
+  if (!isLiveMode()) return demoOpportunities.map((row) => ({ ...row, author_avatar_url: null }));
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("opportunities")
@@ -62,7 +78,10 @@ export async function listOpportunities(options: { includeSuppressed?: boolean }
 }
 
 export async function getOpportunity(id: string): Promise<OpportunityView | null> {
-  if (!isLiveMode()) return demoOpportunities.find((x) => x.id === id) ?? null;
+  if (!isLiveMode()) {
+    const demo = demoOpportunities.find((x) => x.id === id);
+    return demo ? { ...demo, author_avatar_url: null } : null;
+  }
   const supabase = createAdminClient();
 
   const [{ data: row, error }, { data: products }] = await Promise.all([
@@ -75,10 +94,33 @@ export async function getOpportunity(id: string): Promise<OpportunityView | null
   const rawClassification = Array.isArray(row.classifications) ? row.classifications[0] : row.classifications;
   const drafts = Array.isArray(row.drafts) ? row.drafts : [];
 
-  const [{ data: actions }, { data: events }] = await Promise.all([
+  const activityPromises = [
     supabase.from("actions").select("*").eq("opportunity_id", id).order("created_at", { ascending: true }),
     supabase.from("events").select("*").eq("opportunity_id", id).order("created_at", { ascending: true }),
-  ]);
+  ] as const;
+  const [{ data: actions }, { data: events }] = await Promise.all(activityPromises);
+
+  if (opportunity.thread_key) {
+    const { data: threadRows } = await supabase
+      .from("opportunities")
+      .select("id,author,content,original_url,detected_at,is_thread_root,status,suppression_reason,raw_payload,source_analysis")
+      .eq("thread_key", opportunity.thread_key)
+      .order("is_thread_root", { ascending: false })
+      .order("detected_at", { ascending: true });
+
+    opportunity.thread_items = (threadRows ?? []).map((item: any) => ({
+      id: item.id,
+      author: item.author,
+      author_avatar_url: avatarFromRow(item),
+      content: cleanSourceText(item.content),
+      original_url: item.original_url,
+      detected_at: item.detected_at,
+      relativeTime: relativeTime(item.detected_at),
+      is_thread_root: Boolean(item.is_thread_root),
+      status: item.status,
+      suppression_reason: item.suppression_reason ?? null,
+    } satisfies ThreadItem));
+  }
 
   const activity: ActivityItem[] = [
     {
@@ -94,7 +136,7 @@ export async function getOpportunity(id: string): Promise<OpportunityView | null
     activity.push({
       id: `classification-${id}`,
       type: "classified",
-      label: rawClassification.should_reply ? "AI classified opportunity" : "AI chose not to reply",
+      label: rawClassification.should_reply ? "AI classified opportunity" : "AI did not queue a reply",
       detail: rawClassification.reason || null,
       created_at: rawClassification.updated_at || rawClassification.created_at,
     });
@@ -179,6 +221,37 @@ export async function listProducts(): Promise<Product[]> {
   return data ?? [];
 }
 
+export async function promoteOpportunity(id: string) {
+  if (!isLiveMode()) return { mode: "demo" as const };
+  const supabase = createAdminClient();
+  const { data: current, error: readError } = await supabase
+    .from("opportunities")
+    .select("id,status,suppression_reason,thread_key")
+    .eq("id", id)
+    .single();
+  if (readError) throw readError;
+
+  const { error } = await supabase.from("opportunities").update({
+    status: "awaiting_review",
+    suppression_reason: null,
+    updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) throw error;
+
+  await supabase.from("actions").insert({
+    opportunity_id: id,
+    action_type: "manual_reply_override",
+    metadata: {
+      source: "dashboard",
+      previous_status: current.status,
+      previous_suppression_reason: current.suppression_reason,
+      thread_key: current.thread_key,
+      feedback_for_rules: true,
+    },
+  });
+  return { mode: "live" as const };
+}
+
 export async function updateOpportunity(id: string, payload: { status: OpportunityStatus; draft_body?: string }) {
   if (!isLiveMode()) return { mode: "demo" as const };
   const supabase = createAdminClient();
@@ -186,18 +259,26 @@ export async function updateOpportunity(id: string, payload: { status: Opportuni
   if (error) throw error;
 
   if (typeof payload.draft_body === "string") {
-    const { data: current } = await supabase.from("drafts").select("version").eq("opportunity_id", id).order("version", { ascending: false }).limit(1);
-    const version = (current?.[0]?.version ?? 0) + 1;
-    const { error: draftError } = await supabase.from("drafts").insert({
-      opportunity_id: id,
-      version,
-      body: payload.draft_body,
-      status: payload.status === "approved" ? "approved" : "edited",
-      model: "human_edit",
-    });
-    if (draftError) throw draftError;
+    const { data: current } = await supabase.from("drafts").select("id,version,body,status").eq("opportunity_id", id).order("version", { ascending: false }).limit(1);
+    const latest = current?.[0];
+    if (latest?.body === payload.draft_body) {
+      if (payload.status === "approved" && latest.status !== "approved") {
+        const { error: updateDraftError } = await supabase.from("drafts").update({ status: "approved" }).eq("id", latest.id);
+        if (updateDraftError) throw updateDraftError;
+      }
+    } else {
+      const version = (latest?.version ?? 0) + 1;
+      const { error: draftError } = await supabase.from("drafts").insert({
+        opportunity_id: id,
+        version,
+        body: payload.draft_body,
+        status: payload.status === "approved" ? "approved" : "edited",
+        model: "human_edit",
+      });
+      if (draftError) throw draftError;
+    }
   }
 
-  await supabase.from("actions").insert({ opportunity_id: id, action_type: payload.status, metadata: { source: "dashboard" } });
+  await supabase.from("actions").insert({ opportunity_id: id, action_type: payload.status, metadata: { source: "dashboard", manual_reddit_posting: payload.status === "posted" } });
   return { mode: "live" as const };
 }
