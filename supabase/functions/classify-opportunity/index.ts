@@ -29,6 +29,7 @@ Client-approved rules:
 - Simple one-off translation requests should not be turned into a course recommendation.
 - Recommend multiple tools only when the problem truly crosses multiple jobs; never dump a catalogue.
 - Do not recommend in culture-only, sensitive, grieving, political, forced-promotion, human/native-speaker-only, or recent-duplicate recommendation scenarios.
+- If the thread already contains a clear and sufficient answer, use do_not_reply unless Tun can add substantial new value. Do not reply merely to insert a product mention.
 - Tun may mention 4 lessons for $1 where genuinely relevant.
 
 Response modes:
@@ -48,12 +49,27 @@ Deno.serve(async (req: Request) => {
       supabase.from("products").select("*").eq("active", true).order("priority"),
     ]);
     if (oppError) throw oppError; if (productError) throw productError;
+
+    let threadContext = "";
+    if (opportunity.thread_key) {
+      const { data: threadRows, error: threadError } = await supabase
+        .from("opportunities")
+        .select("id,title,content,original_url,is_thread_root,detected_at")
+        .eq("thread_key", opportunity.thread_key)
+        .order("is_thread_root", { ascending: false })
+        .order("detected_at", { ascending: true });
+      if (threadError) throw threadError;
+      threadContext = (threadRows ?? []).map((r: any, i: number) =>
+        `${r.is_thread_root ? "ROOT POST" : `COMMENT ${i}`}: ${r.content || ""}`
+      ).join("\n\n");
+    }
+
     const productList = (products ?? []).map((p: any) => `${p.key}: ${p.name} -> ${(p.intent_keys || []).join(", ")}`).join("\n");
     const result = await responses({
       model: Deno.env.get("OPENAI_CLASSIFIER_MODEL") || "gpt-5.6-luna",
       reasoning: { effort: "low" },
       instructions: `Classify public conversations for Tun's Armenian-language ecosystem. Be conservative, useful and non-spammy. Use only listed product keys. Preserve the business rules exactly.\n\n${rules}\nProducts:\n${productList}`,
-      input: `Community: ${opportunity.community || "unknown"}\nTitle: ${opportunity.title || ""}\nConversation: ${opportunity.content}`,
+      input: `Community: ${opportunity.community || "unknown"}\nTitle: ${opportunity.title || ""}\nPrimary conversation: ${opportunity.content}\n\nFull thread context:\n${threadContext || "(no additional thread context)"}`,
       text: { format: { type: "json_schema", name: "tun_opportunity_classification", strict: true, schema } },
     });
     const parsed = JSON.parse(outputText(result));
