@@ -17,6 +17,12 @@ export default async function DashboardPage() {
   const pending = opportunities.filter((x) => ["drafted", "awaiting_review"].includes(x.status)).length;
   const qualified = opportunities.filter((x) => (x.classification?.relevance_score ?? 0) >= 3 && x.status !== "ignored").length;
   const posted = opportunities.filter((x) => x.status === "posted").length;
+  const priorityOrder: Record<string, number> = { awaiting_review: 0, drafted: 0, qualified: 1, new: 1, classified: 1, approved: 2, rejected: 3, ignored: 4, posted: 5 };
+  const recent = [...opportunities].sort((a, b) => {
+    const rank = (priorityOrder[a.status] ?? 9) - (priorityOrder[b.status] ?? 9);
+    if (rank !== 0) return rank;
+    return new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime();
+  });
 
   return (
     <AppShell>
@@ -55,7 +61,7 @@ export default async function DashboardPage() {
       <section className="section">
         <div className="section-head"><div><div className="eyebrow">Priority queue</div><h2>Recent opportunities</h2></div><Link className="link" href="/opportunities">View all →</Link></div>
         <div className="list">
-          {opportunities.length ? opportunities.slice(0, 5).map((o) => <OpportunityCard key={o.id} opportunity={o} />) : <div className="card empty-state">No conversations in the queue yet. Automation is monitoring for new matches.</div>}
+          {recent.length ? recent.slice(0, 5).map((o) => <OpportunityCard key={o.id} opportunity={o} />) : <div className="card empty-state">No conversations in the queue yet. Automation is monitoring for new matches.</div>}
         </div>
       </section>
     </AppShell>
