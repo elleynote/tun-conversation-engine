@@ -48,7 +48,7 @@ Deno.serve(async () => {
       if (!newest || new Date(m.matched_on) > new Date(newest)) newest = m.matched_on;
       const originalUrl = m.item?.item_url || null;
       const platform = m.item?.backend || "unknown";
-      const thread = platform === "reddit"
+      const thread = originalUrl?.includes("reddit.com/")
         ? redditThreadInfo(originalUrl)
         : { threadKey: null, isThreadRoot: true };
 
