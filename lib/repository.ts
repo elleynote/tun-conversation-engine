@@ -88,13 +88,13 @@ export async function getOpportunity(id: string): Promise<OpportunityView | null
     },
   ];
 
-  if (rawClassification?.created_at) {
+  if (rawClassification?.updated_at || rawClassification?.created_at) {
     activity.push({
       id: `classification-${id}`,
       type: "classified",
       label: rawClassification.should_reply ? "AI classified opportunity" : "AI chose not to reply",
       detail: rawClassification.reason || null,
-      created_at: rawClassification.created_at,
+      created_at: rawClassification.updated_at || rawClassification.created_at,
     });
   }
 
