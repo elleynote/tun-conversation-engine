@@ -26,6 +26,10 @@ Deno.serve(async (req: Request) => {
         results.push({ id: row.id, drafted: await invoke("generate-draft", { opportunity_id: row.id }) });
       }
     }
+    await supabase.from("settings").upsert({
+      key: "pipeline_last_run",
+      value: { at: new Date().toISOString(), processed_count: results.length }
+    }, { onConflict: "key" });
     return json({ ok: true, processed: results });
   } catch (error) { return json({ error: error instanceof Error ? error.message : String(error) }, 500); }
 });
