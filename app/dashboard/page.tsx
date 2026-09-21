@@ -2,16 +2,20 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { OpportunityCard } from "@/components/opportunity-card";
 import { StatCard } from "@/components/stat-card";
-import { listOpportunities } from "@/lib/repository";
+import { getAutomationStatus, listOpportunities } from "@/lib/repository";
 import { connectionStatus } from "@/lib/runtime";
+import { relativeTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const opportunities = await listOpportunities();
+  const [opportunities, automation] = await Promise.all([
+    listOpportunities(),
+    getAutomationStatus(),
+  ]);
   const status = connectionStatus();
   const pending = opportunities.filter((x) => ["drafted", "awaiting_review"].includes(x.status)).length;
-  const qualified = opportunities.filter((x) => (x.classification?.relevance_score ?? 0) >= 3).length;
+  const qualified = opportunities.filter((x) => (x.classification?.relevance_score ?? 0) >= 3 && x.status !== "ignored").length;
   const posted = opportunities.filter((x) => x.status === "posted").length;
 
   return (
@@ -20,17 +24,39 @@ export default async function DashboardPage() {
         <div><div className="eyebrow">Phase 1 • Reddit</div><h1>Conversation Engine</h1><div className="muted">Find relevant conversations, answer where appropriate, recommend the right Tun resource, and keep a human in control.</div></div>
         <span className={`badge ${status.mode === "live" ? "green" : "amber"}`}>{status.mode} mode</span>
       </div>
-      {status.mode === "demo" ? <div className="notice">This ZIP starts in demo mode so you can review the full workflow before external credentials arrive. Connect Supabase and set <span className="code">APP_MODE=live</span> when ready.</div> : null}
-      <div className="success-note section"><strong>Dashboard notifications:</strong> this queue is the Phase 1 notification channel. New qualified drafts appear under Needs review; no email or Slack integration is required.</div>
+
+      {status.mode === "demo" ? <div className="notice">This app is in demo mode. Connect Supabase and set <span className="code">APP_MODE=live</span> when ready.</div> : null}
+
+      <section className="card panel automation-panel">
+        <div className="section-head">
+          <div><div className="eyebrow">Automation</div><h2>Pipeline status</h2></div>
+          <span className={`badge ${automation.syftenConnected && automation.openAIConnected ? "green" : "amber"}`}>
+            {automation.syftenConnected && automation.openAIConnected ? "Running" : "Setup required"}
+          </span>
+        </div>
+        <div className="automation-grid">
+          <div className="automation-item"><span className={`status-dot ${automation.syftenConnected ? "on" : ""}`} /><div><strong>Syften</strong><div className="small muted">{automation.syftenConnected ? "Connected" : "Waiting for token"}</div></div></div>
+          <div className="automation-item"><span className={`status-dot ${automation.openAIConnected ? "on" : ""}`} /><div><strong>OpenAI</strong><div className="small muted">{automation.openAIConnected ? "Connected" : "Waiting for API key"}</div></div></div>
+          <div className="automation-item"><div><div className="label">Last Syften check</div><strong>{automation.lastSyftenCheck ? relativeTime(automation.lastSyftenCheck) : "Waiting for next run"}</strong></div></div>
+          <div className="automation-item"><div><div className="label">Last AI pipeline run</div><strong>{automation.lastPipelineRun ? relativeTime(automation.lastPipelineRun) : "Waiting for next run"}</strong></div></div>
+          <div className="automation-item"><div><div className="label">Detected today</div><strong>{automation.newToday}</strong></div></div>
+        </div>
+      </section>
+
+      <div className="success-note section"><strong>Dashboard notifications:</strong> new qualified drafts appear under Needs review. Thread-only Reddit comments are automatically hidden from the normal queue.</div>
+
       <div className="grid-stats section">
-        <StatCard label="Detected" value={opportunities.length} hint="current sample/window" />
-        <StatCard label="Qualified" value={qualified} hint="relevance 3-5" />
+        <StatCard label="Detected" value={opportunities.length} hint="canonical conversations" />
+        <StatCard label="Qualified" value={qualified} hint="relevant and actionable" />
         <StatCard label="Needs review" value={pending} hint="drafted responses" />
         <StatCard label="Posted" value={posted} hint="after approval" />
       </div>
+
       <section className="section">
         <div className="section-head"><div><div className="eyebrow">Priority queue</div><h2>Recent opportunities</h2></div><Link className="link" href="/opportunities">View all →</Link></div>
-        <div className="list">{opportunities.slice(0, 4).map((o) => <OpportunityCard key={o.id} opportunity={o} />)}</div>
+        <div className="list">
+          {opportunities.length ? opportunities.slice(0, 5).map((o) => <OpportunityCard key={o.id} opportunity={o} />) : <div className="card empty-state">No conversations in the queue yet. Automation is monitoring for new matches.</div>}
+        </div>
       </section>
     </AppShell>
   );
