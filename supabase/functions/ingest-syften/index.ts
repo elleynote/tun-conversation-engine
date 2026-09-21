@@ -1,4 +1,5 @@
 import { adminClient, json } from "../_shared/client.ts";
+import { cronRequestAuthorized } from "../_shared/cron-auth.ts";
 
 function redditThreadInfo(url?: string | null) {
   if (!url) return { threadKey: null, isThreadRoot: true };
@@ -18,7 +19,8 @@ function redditThreadInfo(url?: string | null) {
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
+  if (!cronRequestAuthorized(req)) return json({ error: "Unauthorized" }, 401);
   try {
     const token = Deno.env.get("SYFTEN_API_TOKEN");
     if (!token) return json({ error: "SYFTEN_API_TOKEN missing" }, 500);
