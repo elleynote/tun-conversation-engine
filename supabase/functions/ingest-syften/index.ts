@@ -112,6 +112,10 @@ Deno.serve(async (req: Request) => {
     if (newest) {
       await supabase.from("settings").upsert({ key: "syften_cursor", value: { matched_on: newest } }, { onConflict: "key" });
     }
+    await supabase.from("settings").upsert({
+      key: "syften_last_run",
+      value: { at: new Date().toISOString(), fetched: matches.length, processed: inserted, threads_touched: touchedThreadKeys.size }
+    }, { onConflict: "key" });
     return json({ ok: true, fetched: matches.length, processed: inserted, cursor: newest, threads_touched: touchedThreadKeys.size });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
