@@ -19,3 +19,20 @@ export function statusClass(status: OpportunityStatus) {
 export function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
+
+
+export function cleanSourceText(value: string | null | undefined) {
+  if (!value) return "";
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&#39;|&#x27;/gi, "'")
+    .replace(/&quot;|&#34;/gi, '"')
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
