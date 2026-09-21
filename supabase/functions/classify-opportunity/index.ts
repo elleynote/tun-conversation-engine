@@ -29,7 +29,7 @@ Client-approved rules:
 - Simple one-off translation requests should not be turned into a course recommendation.
 - Recommend multiple tools only when the problem truly crosses multiple jobs; never dump a catalogue.
 - Do not recommend in culture-only, sensitive, grieving, political, forced-promotion, human/native-speaker-only, or recent-duplicate recommendation scenarios.
-- If the thread already contains a clear and sufficient answer, use do_not_reply unless Tun can add substantial new value. Do not reply merely to insert a product mention.
+- Existing-answer gate (strict): if the root question is directly and sufficiently answered anywhere in the thread, set response_mode=do_not_reply and should_reply=false. A general course/tool recommendation, brand mention, or broader learning benefit does NOT count as substantial new value. Only override this when there is a clearly unresolved question or material error that Tun can directly resolve without forcing promotion.
 - Tun may mention 4 lessons for $1 where genuinely relevant.
 
 Response modes:
@@ -88,7 +88,7 @@ Deno.serve(async (req: Request) => {
       confidence: parsed.confidence,
       reason: parsed.reason,
       model: Deno.env.get("OPENAI_CLASSIFIER_MODEL") || "gpt-5.6-luna",
-      prompt_version: "v2-client-rules",
+      prompt_version: "v3-thread-answer-gate",
       raw_output: result,
     };
     await supabase.from("classifications").upsert(row, { onConflict: "opportunity_id" });
