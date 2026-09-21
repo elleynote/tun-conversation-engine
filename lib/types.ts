@@ -57,6 +57,23 @@ export type Draft = {
   status?: string;
 };
 
+export type ActivityItem = {
+  id: string;
+  type: string;
+  label: string;
+  detail?: string | null;
+  created_at: string;
+};
+
+export type AutomationStatus = {
+  syftenConnected: boolean;
+  openAIConnected: boolean;
+  lastSyftenCheck: string | null;
+  lastPipelineRun: string | null;
+  lastSyftenCursor: string | null;
+  newToday: number;
+};
+
 export type OpportunityView = {
   id: string;
   platform: string;
@@ -70,6 +87,9 @@ export type OpportunityView = {
   relativeTime: string;
   status: OpportunityStatus;
   matched_filter?: string | null;
+  thread_key?: string | null;
+  is_thread_root?: boolean;
+  suppression_reason?: string | null;
   classification?: Classification | null;
   product?: Product | null;
   products?: Product[];
