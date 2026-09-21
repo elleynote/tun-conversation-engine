@@ -26,6 +26,6 @@ export function connectionStatus() {
     openai: hasOpenAI(),
     syften: hasSyften(),
     redditPublishing: hasRedditPublishing(),
-    netlify: Boolean(process.env.NETLIFY || process.env.DEPLOY_ID),
+    netlify: Boolean(process.env.URL || process.env.SITE_ID || process.env.SITE_NAME || process.env.NETLIFY || process.env.DEPLOY_ID),
   };
 }
