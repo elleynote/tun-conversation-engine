@@ -94,4 +94,5 @@ export type OpportunityView = {
   product?: Product | null;
   products?: Product[];
   draft?: Draft | null;
+  activity?: ActivityItem[];
 };
