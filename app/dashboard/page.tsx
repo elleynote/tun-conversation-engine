@@ -39,7 +39,7 @@ export default async function DashboardPage() {
           <div className="automation-item"><span className={`status-dot ${automation.openAIConnected ? "on" : ""}`} /><div><strong>OpenAI</strong><div className="small muted">{automation.openAIConnected ? "Connected" : "Waiting for API key"}</div></div></div>
           <div className="automation-item"><div><div className="label">Last Syften check</div><strong>{automation.lastSyftenCheck ? relativeTime(automation.lastSyftenCheck) : "Waiting for next run"}</strong></div></div>
           <div className="automation-item"><div><div className="label">Last AI pipeline run</div><strong>{automation.lastPipelineRun ? relativeTime(automation.lastPipelineRun) : "Waiting for next run"}</strong></div></div>
-          <div className="automation-item"><div><div className="label">Detected today</div><strong>{automation.newToday}</strong></div></div>
+          <div className="automation-item"><div><div className="label">Syften matches today</div><strong>{automation.newToday}</strong></div></div>
         </div>
       </section>
 
