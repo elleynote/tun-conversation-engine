@@ -17,7 +17,9 @@ function mapOpportunity(row: any, productRows: Product[]): OpportunityView {
   } : null;
   const drafts = Array.isArray(row.drafts) ? [...row.drafts] : [];
   const latestDraft = drafts.sort((a: any, b: any) => (b.version ?? 0) - (a.version ?? 0))[0] ?? null;
-  const routed = classification ? routeProducts(classification, productRows) : [];
+  const routed = classification && classification.should_reply && classification.response_mode !== "do_not_reply"
+    ? routeProducts(classification, productRows)
+    : [];
 
   return {
     id: row.id,
