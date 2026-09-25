@@ -100,7 +100,7 @@ Rules:
 - Do not dump several products simply because they exist.
 - Use only approved claims/URLs below.
 - The classifier has already selected the relevant resources. For answer_and_recommend or recommend_only, if more than one approved resource is supplied, mention EVERY supplied approved resource exactly once. Do not silently drop one of the classifier-selected resources.
-- When both the Armenian Verb Conjugation Tool and English to Armenian Translation are approved, naturally explain the distinct value of both: use armenianverbs.com for verb forms/tenses and translatearmenian.com for quick English-to-Western-Armenian translation.
+- When Tun + the Armenian Verb Conjugation Tool + English to Armenian Translation are approved together, keep the Tun mention brief and natural, then explain the immediate jobs clearly: armenianverbs.com for verb forms/tenses and translatearmenian.com for quick English-to-Western-Armenian translation. Do not make the reply feel like a catalogue.
 - If exact Armenian wording, translation, pronunciation, dialect or grammar is uncertain, do not guess.
 - An existing answer elsewhere in the thread does not automatically prevent a reply. Add distinct value instead of repeating what is already there.
 - Default to one useful reply to the thread. Do not address every comment unless a reviewer separately promotes a comment as its own opportunity.
@@ -155,7 +155,7 @@ Requirements:
 - Preserve the original answer unless a wording change is needed for flow.
 - Include EVERY required approved resource URL exactly once.
 - Do not add any unapproved resource, claim, offer or URL.
-- When both armenianverbs.com and translatearmenian.com are required, explain their distinct uses naturally: the verb tool is for verb forms/tenses, and the translation tool is for quick English-to-Western-Armenian translation.
+- When tunapp.com, armenianverbs.com and translatearmenian.com are required together, keep the Tun mention brief, then explain the utilities naturally: the verb tool is for verb forms/tenses, and the translation tool is for quick English-to-Western-Armenian translation. Do not write a catalogue-style list.
 - Return only the final revised reply text.`,
         input: `Current reply:
 ${body}
