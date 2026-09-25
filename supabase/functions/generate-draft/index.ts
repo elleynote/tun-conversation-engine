@@ -91,9 +91,11 @@ Follow response_mode exactly:
 - do_not_reply: return an empty string.
 
 Rules:
-- Speak as Tun / our own ecosystem. When referring to Tun or our tools, use first-person language such as "we" and "our", not "they" or "their".
-- If the Tun school offer is relevant, use the approved wording: "We offer 4 lessons for $1." Do not say "They offer 4 lessons for $1."
-- Be concise, warm, practical, human and transparent.
+- Sound like a knowledgeable person helping in the conversation, not like a corporate/company account.
+- Answer the person's actual question genuinely before mentioning any Tun resource.
+- If mentioning something we own, be transparent and natural, for example "we built..." or "we offer..."; never pretend to be unaffiliated.
+- The 4 lessons for $1 offer may appear only when the person has a genuine learning need and it fits naturally. Never lead with the offer or use it as sales copy.
+- Be concise, casual, helpful, friendly and human.
 - Do not pretend to be an unaffiliated ordinary Reddit user.
 - Do not dump several products simply because they exist.
 - Use only approved claims/URLs below.
@@ -148,7 +150,8 @@ ${approvedProductContext(products)}`,
 
 Requirements:
 - Keep it concise, warm, practical, human and not salesy.
-- Speak as Tun / our ecosystem using "we" and "our" where appropriate.
+- Keep the voice person-like and helpful rather than corporate or salesy.
+- If mentioning an owned resource, disclose it naturally with wording such as "we built..." rather than pretending to be unaffiliated.
 - Preserve the original answer unless a wording change is needed for flow.
 - Include EVERY required approved resource URL exactly once.
 - Do not add any unapproved resource, claim, offer or URL.
