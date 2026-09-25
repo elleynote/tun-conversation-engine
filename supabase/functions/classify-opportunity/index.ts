@@ -24,9 +24,9 @@ Client-approved rules:
 - Long-term learning/relearning/reconnection/speaking confidence/family learning/dialect/grammar/vocabulary/literacy -> Tun Online Armenian School.
 - Immediate translation/meaning -> Translator. Add Tun only when there is genuine longer-term learning intent.
 - Immediate typing/transliteration/script -> Keyboard. Add Tun when there is learning/literacy intent.
-- Verb conjugation, tense, verb-form or verb-choice lookup -> Armenian Verb Conjugation Tool.
-- IMPORTANT MIXED-INTENT RULE: if a question asks how to say/translate a phrase AND also asks which verb, tense, conjugation or verb form to use, recommend BOTH the Verb Conjugation Tool and Translator. Do NOT replace the Translator with Tun Online Armenian School unless the user also expresses a genuine long-term learning goal.
-- Example: Ã¢â‚¬Å“How to say Ã¢â‚¬ËœWe agreedÃ¢â‚¬â„¢ in Western Armenian? IÃ¢â‚¬â„¢m not sure which verb to use.Ã¢â‚¬Â -> recommended_product_keys must be ["verbs","translator"].
+- Verb conjugation, tense, verb-form or verb-choice lookup -> Tun Online Armenian School + Armenian Verb Conjugation Tool.
+- IMPORTANT MIXED-INTENT RULE: if a question asks how to say/translate a phrase AND also asks which verb, tense, conjugation or verb form to use, recommend Tun Online Armenian School + Armenian Verb Conjugation Tool + Translator. Keep the Tun mention brief and useful; do not turn the reply into a product catalogue.
+- Example: "How to say 'We agreed' in Western Armenian? I'm not sure which verb to use." -> recommended_product_keys must be ["tun_school","verbs","translator"].
 - General grammar/pronunciation/vocabulary nuance/dialect/literacy -> Tun only when the request is broader than a one-off translation/verb lookup.
 - Simple one-off translation requests should not be turned into a course recommendation.
 - Recommend multiple tools only when the problem truly crosses multiple jobs; never dump a catalogue.
@@ -164,15 +164,26 @@ ${productList}`,
       parsed.reason = `${parsed.reason} Client do-not-recommend rule: this is a preservation/revitalization or institutional discussion without a direct learning/use request, so a product recommendation would feel forced.`;
     }
 
-    if (hasTranslationTask && hasVerbTask && !promotionBlocked && !manualReplyOnly && !deprioritizeOrDrop && !preservationWithoutDirectNeed) {
-      parsed.recommended_product_key = "verbs";
-      parsed.recommended_product_keys = ["verbs", "translator"];
-      parsed.should_reply = true;
-      if (parsed.response_mode === "do_not_reply" || parsed.response_mode === "answer_only") {
-        parsed.response_mode = "answer_and_recommend";
-      }
-      parsed.reason = `${parsed.reason} Client routing rule: this is both a verb/conjugation task and an immediate translation/how-to-say task, so use the verb tool plus the translation tool.`;
+    const canRecommend =
+      parsed.should_reply &&
+      parsed.response_mode !== "do_not_reply" &&
+      !promotionBlocked &&
+      !manualReplyOnly &&
+      !deprioritizeOrDrop &&
+      !preservationWithoutDirectNeed;
+
+    if (canRecommend && hasTranslationTask && hasVerbTask) {
+      parsed.recommended_product_key = "tun_school";
+      parsed.recommended_product_keys = ["tun_school", "verbs", "translator"];
+      if (parsed.response_mode === "answer_only") parsed.response_mode = "answer_and_recommend";
+      parsed.reason = `${parsed.reason} Client routing rule: this combines Armenian usage/learning with a verb/conjugation task and an immediate translation/how-to-say task, so use Tun + the verb tool + the translator.`;
+    } else if (canRecommend && hasVerbTask && !hasTranslationTask) {
+      parsed.recommended_product_key = "tun_school";
+      parsed.recommended_product_keys = ["tun_school", "verbs"];
+      if (parsed.response_mode === "answer_only") parsed.response_mode = "answer_and_recommend";
+      parsed.reason = `${parsed.reason} Client routing rule: verb/conjugation questions should use Tun for structured learning plus the verb tool for the immediate lookup.`;
     }
+
     const noReply = parsed.response_mode === "do_not_reply" || !parsed.should_reply;
     const mixedVerbTranslation =
       !noReply &&
@@ -191,17 +202,17 @@ ${productList}`,
     } else if (mixedVerbTranslation) {
       // Deterministic client-approved safety rail:
       // mixed phrase translation + verb lookup must route to verbs + translator.
-      keys = ["verbs", "translator"];
+      keys = ["tun_school", "verbs", "translator"];
     }
 
     const primaryKey = noReply
       ? null
       : mixedVerbTranslation
-        ? "verbs"
+        ? "tun_school"
         : (parsed.recommended_product_key || keys[0] || null);
 
     const reason = mixedVerbTranslation
-      ? `${parsed.reason} Client routing rule applied: this combines phrase translation/meaning with verb choice/conjugation, so the approved route is Armenian Verb Conjugation Tool + English to Armenian Translation.`
+      ? `${parsed.reason} Client routing rule applied: this combines Armenian usage/learning with phrase translation/meaning and verb choice/conjugation, so the approved route is Tun Online Armenian School + Armenian Verb Conjugation Tool + English to Armenian Translation.`
       : parsed.reason;
 
     const row = {
@@ -218,7 +229,7 @@ ${productList}`,
       confidence: parsed.confidence,
       reason,
       model: Deno.env.get("OPENAI_CLASSIFIER_MODEL") || "gpt-5.6-luna",
-      prompt_version: "v7-client-matrix-alignment",
+      prompt_version: "v8-client-routing-review-flow",
       raw_output: result,
     };
 
