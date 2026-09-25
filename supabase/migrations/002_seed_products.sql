@@ -54,7 +54,7 @@ on conflict (key) do update set
 
 insert into public.settings (key, value)
 values
-  ('brand_voice', '{"text":"Casual, helpful, friendly and human. Answer the actual question first. Do not sound corporate or salesy. Recommend at most one relevant Tun resource per thread unless the user clearly needs multiple tools. When recommending something we built, be transparent with natural wording such as \"we built...\" or \"we offer...\"."}'::jsonb),
+  ('brand_voice', '{"text":"Casual, helpful, friendly and human. Not corporate or salesy. Answer the actual question genuinely first. The reply should read like a knowledgeable person who knows a lot about Armenian, not like a company account. Only recommend once per thread. When an owned resource is genuinely relevant, disclose it naturally with wording such as \"we built...\" or \"we offer...\"."}'::jsonb),
   ('pipeline', '{"qualification_threshold":3,"auto_publish":false,"human_approval_required":true}'::jsonb),
   ('notifications', '{"channel":"dashboard","email":false,"slack":false}'::jsonb),
   ('response_policy', '{"default":"answer_and_recommend","low_answer_confidence":"recommend_only","sensitive":"do_not_reply","no_forced_promotion":true}'::jsonb)
