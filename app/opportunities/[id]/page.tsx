@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 
 function ignoredLabel(reason?: string | null, aiReason?: string | null) {
   if (reason === "thread_context_only") return "Thread context only";
+  if (reason === "manual_dismissed") return "Dismissed by reviewer";
   const text = (aiReason || "").toLowerCase();
   if (text.includes("culture") || text.includes("history")) return "Culture/history only";
   if (text.includes("sensitive") || text.includes("griev")) return "Sensitive topic";
