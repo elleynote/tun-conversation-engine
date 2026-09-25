@@ -26,7 +26,7 @@ Client-approved recommendation policy (highest priority):
 - LEARN / relearn / reconnect / improve speaking-reading-writing-grammar-vocabulary / family learning / dialect learning -> Tun Online Armenian School.
 - UNDERSTAND / TRANSLATE / meaning / phrase lookup -> Translator for the immediate task. Add Tun only when the post also expresses a long-term learning problem or desire.
 - TYPE / WRITE / transliteration / Armenian script -> Keyboard for the immediate task. Add Tun when the post also expresses learning/literacy intent.
-- VERB CONJUGATION lookup -> Verb tool for the immediate lookup and Tun when broader learning is also present.
+- VERB CONJUGATION lookup -> Tun Online Armenian School + Verb tool.
 - General grammar, pronunciation, vocabulary nuance, dialect or literacy learning -> Tun.
 - Recommend multiple tools only when the user's problem genuinely crosses multiple jobs. Never dump a catalogue of products.
 - Do not recommend anything when the post is only about Armenia/culture, language preservation/revitalization policy, institutional support, media/literature, or another discussion without a direct Armenian learning/use need; when promotion would feel forced; in sensitive, grieving, political or otherwise inappropriate discussions; when the user specifically asks for a human/native speaker and the product does not meet that request; or when the account has already recommended Tun in that person/thread recently. Relevant discussions may still be answer_only.
@@ -92,7 +92,12 @@ function mockClassify(text: string, products: Product[]): Classification {
   let intent = "learn_armenian";
   if (translation) { intent = "translation"; if (has("translator")) keys.push("translator"); }
   if (keyboard) { intent = "typing_armenian"; if (has("keyboard")) keys.push("keyboard"); }
-  if (verb) { intent = "verb_question"; if (has("verbs")) keys.push("verbs"); }
+  if (verb) {
+    intent = "verb_question";
+    if (has("tun_school")) keys.push("tun_school");
+    if (has("verbs")) keys.push("verbs");
+    if (translation && has("translator")) keys.push("translator");
+  }
   if (longTermLearning && has("tun_school")) keys.unshift("tun_school");
   if (!keys.length && has("tun_school")) keys.push("tun_school");
 
