@@ -29,7 +29,7 @@ Client-approved recommendation policy (highest priority):
 - VERB CONJUGATION lookup -> Verb tool for the immediate lookup and Tun when broader learning is also present.
 - General grammar, pronunciation, vocabulary nuance, dialect or literacy learning -> Tun.
 - Recommend multiple tools only when the user's problem genuinely crosses multiple jobs. Never dump a catalogue of products.
-- Do not recommend anything when the post is only about Armenia/culture without a language need; when promotion would feel forced; in sensitive, grieving, political or otherwise inappropriate discussions; when the user specifically asks for a human/native speaker and the product does not meet that request; or when the account has already recommended Tun in that person/thread recently.
+- Do not recommend anything when the post is only about Armenia/culture, language preservation/revitalization policy, institutional support, media/literature, or another discussion without a direct Armenian learning/use need; when promotion would feel forced; in sensitive, grieving, political or otherwise inappropriate discussions; when the user specifically asks for a human/native speaker and the product does not meet that request; or when the account has already recommended Tun in that person/thread recently. Relevant discussions may still be answer_only.
 - For a simple one-off translation request such as 'How do you say happy birthday in Armenian?', prefer the Translator only, not a course.
 - For long-term learning, Tun takes priority. Where relevant, Tun can mention the 4 lessons for $1 trial.
 
@@ -78,6 +78,13 @@ function mockClassify(text: string, products: Product[]): Classification {
   const verb = /verb|conjugat|past tense|future tense|present tense/.test(s);
   const keyboard = /keyboard|type armenian|typing armenian|transliterat|armenian letters|armenian script/.test(s);
   const languageNeed = longTermLearning || translation || verb || keyboard || /western armenian|eastern armenian|pronounc|suffix|prefix|sentence structure/.test(s);
+  const preservationDiscussion = /revitali[sz]|endanger|language death|dead language|dying language|preserv|institutional|governance|state-building|compulsory school|language policy|literature|media/.test(s);
+  const directLanguageNeed = /\b(i|we|my|our)\b.{0,40}\b(want|need|wish|trying|learn|learning|relearn|improve|practice|speak|read|write|study)\b/.test(s)
+    || /where can i learn|armenian course|lesson|tutor|learning resource|how do i|how to say|translate|translation|what does .* mean|pronounc|grammar|vocab|verb|conjugat|keyboard|type armenian|typing armenian|transliterat|spell|correct my/.test(s);
+
+  if (preservationDiscussion && !directLanguageNeed) {
+    return { relevance_score: 3, intent: "language_preservation_discussion", dialect: s.includes("western armenian") ? "western" : s.includes("eastern armenian") ? "eastern" : "unknown", commercial_intent: 0, recommended_product_key: null, recommended_product_keys: [], response_mode: "answer_only", answer_confidence: 0.8, should_reply: true, confidence: 0.9, reason: "Relevant language-preservation discussion, but the client rules say not to force a product recommendation without a direct learning/use need." };
+  }
 
   if (!languageNeed) return { relevance_score: 1, intent: "other", dialect: "unknown", commercial_intent: 0, recommended_product_key: null, recommended_product_keys: [], response_mode: "do_not_reply", answer_confidence: 0, should_reply: false, confidence: 0.8, reason: "No strong Armenian-language need detected." };
 
