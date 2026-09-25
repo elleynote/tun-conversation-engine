@@ -33,12 +33,12 @@ values
   (
     'verbs',
     'Armenian Verb Conjugation Tool',
-    'Dedicated Armenian verb-conjugation reference for forms and tense lookups.',
-    null,
-    array['verb_question'],
+    'Armenian verb-conjugation reference for tense, verb-form and conjugation lookups.',
+    'https://armenianverbs.com/',
+    array['verb_question','verb_conjugation','past_tense','present_tense','future_tense','verb_form'],
     40,
     true,
-    '{"awaiting_url":true}'::jsonb
+    '{"claims":["Use for Armenian verb conjugation, tense, verb-form and verb-choice questions."],"awaiting_url":false}'::jsonb
   ),
   ('dialect_quiz', 'Eastern / Western Armenian Quiz', 'Reserved for later approval.', null, array['dialect_choice'], 90, false, '{"status":"not_in_current_recommendation_rules"}'::jsonb),
   ('social_network', 'Armenian Social Network', 'Reserved for later approval.', null, array['practice_community'], 90, false, '{"status":"not_in_current_recommendation_rules"}'::jsonb)
@@ -54,7 +54,7 @@ on conflict (key) do update set
 
 insert into public.settings (key, value)
 values
-  ('brand_voice', '{"text":"Helpful, warm, practical and human. Answer the person first when it is safe and accurate. Do not sound salesy. Be transparent when recommending a Tun resource."}'::jsonb),
+  ('brand_voice', '{"text":"Casual, helpful, friendly and human. Answer the actual question first. Do not sound corporate or salesy. Recommend at most one relevant Tun resource per thread unless the user clearly needs multiple tools. When recommending something we built, be transparent with natural wording such as \"we built...\" or \"we offer...\"."}'::jsonb),
   ('pipeline', '{"qualification_threshold":3,"auto_publish":false,"human_approval_required":true}'::jsonb),
   ('notifications', '{"channel":"dashboard","email":false,"slack":false}'::jsonb),
   ('response_policy', '{"default":"answer_and_recommend","low_answer_confidence":"recommend_only","sensitive":"do_not_reply","no_forced_promotion":true}'::jsonb)
