@@ -30,7 +30,7 @@ Client-approved rules:
 - General grammar/pronunciation/vocabulary nuance/dialect/literacy -> Tun only when the request is broader than a one-off translation/verb lookup.
 - Simple one-off translation requests should not be turned into a course recommendation.
 - Recommend multiple tools only when the problem truly crosses multiple jobs; never dump a catalogue.
-- Do not recommend in culture-only, sensitive, grieving, political, forced-promotion, human/native-speaker-only, or recent-duplicate recommendation scenarios.
+- Do not recommend in culture-only, language-preservation/revitalization-policy, institutional, media/literature, sensitive, grieving, political, forced-promotion, human/native-speaker-only, or recent-duplicate recommendation scenarios when the person is not actually asking for Armenian learning/use help or a relevant resource. A relevant discussion can still be answer_only.
 - IMPORTANT: "already answered" is NOT, by itself, a reason to ignore a relevant thread. If Tun or an approved tool can add distinct, genuinely useful value for the original poster or later readers, should_reply may still be true. Do not merely repeat the answer already present; add a complementary explanation, practical next step, or the most relevant resource.
 - Default to ONE Tun reply per Reddit thread. Do not try to reply to every comment. Individual comments are only separate reply opportunities when a human reviewer explicitly promotes them in the dashboard.
 - If the thread is relevant but an exact language answer is uncertain, use recommend_only rather than guessing.
@@ -148,8 +148,23 @@ ${productList}`,
       /\btranslate|translation|what\s+does\b.*\bmean|meaning\b/i.test(routingText);
     const hasVerbTask =
       /\bverb|conjugat|tense|inflect|verb\s+form|which\s+verb\b/i.test(routingText);
+    const preservationDiscussion =
+      /revitali[sz]|endanger|language\s+death|dead\s+language|dying\s+language|preserv|institutional|governance|state-building|compulsory\s+school|language\s+policy|literature|media/i.test(routingText);
+    const directLanguageNeed =
+      /\b(i|we|my|our)\b.{0,40}\b(want|need|wish|trying|learn|learning|relearn|improve|practice|speak|read|write|study)\b/i.test(routingText) ||
+      /where\s+can\s+i\s+learn|best\s+armenian\s+course|armenian\s+course|lessons?|tutor|learning\s+resources?|how\s+do\s+i|how\s+to\s+say|translate|translation|what\s+does.*mean|pronounc|grammar|vocab|verb|conjugat|keyboard|type\s+armenian|typing\s+armenian|transliterat|spell|correct\s+my/i.test(routingText);
+    const preservationWithoutDirectNeed = preservationDiscussion && !directLanguageNeed;
 
-    if (hasTranslationTask && hasVerbTask && !promotionBlocked && !manualReplyOnly && !deprioritizeOrDrop) {
+    if (preservationWithoutDirectNeed && !deprioritizeOrDrop) {
+      parsed.recommended_product_key = null;
+      parsed.recommended_product_keys = [];
+      if (parsed.should_reply && parsed.response_mode !== "do_not_reply") {
+        parsed.response_mode = "answer_only";
+      }
+      parsed.reason = `${parsed.reason} Client do-not-recommend rule: this is a preservation/revitalization or institutional discussion without a direct learning/use request, so a product recommendation would feel forced.`;
+    }
+
+    if (hasTranslationTask && hasVerbTask && !promotionBlocked && !manualReplyOnly && !deprioritizeOrDrop && !preservationWithoutDirectNeed) {
       parsed.recommended_product_key = "verbs";
       parsed.recommended_product_keys = ["verbs", "translator"];
       parsed.should_reply = true;
@@ -197,7 +212,7 @@ ${productList}`,
       confidence: parsed.confidence,
       reason,
       model: Deno.env.get("OPENAI_CLASSIFIER_MODEL") || "gpt-5.6-luna",
-      prompt_version: "v6-community-policy-hardening",
+      prompt_version: "v7-client-matrix-alignment",
       raw_output: result,
     };
 
