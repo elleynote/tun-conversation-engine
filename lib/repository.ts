@@ -74,7 +74,9 @@ export async function listOpportunities(options: { includeSuppressed?: boolean }
   const productRows = (products ?? []) as Product[];
 
   const rows = (data ?? []).map((row: any) => mapOpportunity(row, productRows));
-  return options.includeSuppressed ? rows : rows.filter((row) => row.suppression_reason !== "thread_context_only");
+  return options.includeSuppressed
+    ? rows
+    : rows.filter((row) => !["thread_context_only", "manual_dismissed"].includes(row.suppression_reason ?? ""));
 }
 
 export async function getOpportunity(id: string): Promise<OpportunityView | null> {
@@ -219,6 +221,62 @@ export async function listProducts(): Promise<Product[]> {
   const { data, error } = await supabase.from("products").select("*").order("priority");
   if (error) throw error;
   return data ?? [];
+}
+
+export async function getNextOpportunityId(currentId: string): Promise<string | null> {
+  const activeStatuses = new Set<OpportunityStatus>(["new", "classified", "qualified", "ignored", "drafted", "awaiting_review"]);
+  const priority: Record<string, number> = {
+    awaiting_review: 0,
+    drafted: 0,
+    qualified: 1,
+    new: 1,
+    classified: 1,
+    ignored: 2,
+  };
+
+  const opportunities = (await listOpportunities())
+    .filter((row) => activeStatuses.has(row.status))
+    .sort((a, b) => {
+      const rank = (priority[a.status] ?? 9) - (priority[b.status] ?? 9);
+      if (rank !== 0) return rank;
+      return new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime();
+    });
+
+  const currentIndex = opportunities.findIndex((row) => row.id === currentId);
+  if (currentIndex >= 0) return opportunities[currentIndex + 1]?.id ?? null;
+  return opportunities[0]?.id ?? null;
+}
+
+export async function dismissOpportunity(id: string) {
+  if (!isLiveMode()) return { mode: "demo" as const };
+  const supabase = createAdminClient();
+
+  const { data: current, error: readError } = await supabase
+    .from("opportunities")
+    .select("id,status,suppression_reason,thread_key")
+    .eq("id", id)
+    .single();
+  if (readError) throw readError;
+
+  const { error } = await supabase.from("opportunities").update({
+    status: "ignored",
+    suppression_reason: "manual_dismissed",
+    updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) throw error;
+
+  await supabase.from("actions").insert({
+    opportunity_id: id,
+    action_type: "dismissed",
+    metadata: {
+      source: "dashboard",
+      previous_status: current.status,
+      previous_suppression_reason: current.suppression_reason,
+      thread_key: current.thread_key,
+    },
+  });
+
+  return { mode: "live" as const };
 }
 
 export async function promoteOpportunity(id: string) {
