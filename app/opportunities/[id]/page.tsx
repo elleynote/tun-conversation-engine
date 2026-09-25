@@ -1,9 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { OpportunityReview } from "@/components/opportunity-review";
 import { ThreadContext } from "@/components/thread-context";
 import { UserAvatar } from "@/components/user-avatar";
-import { getOpportunity } from "@/lib/repository";
+import { getNextOpportunityId, getOpportunity } from "@/lib/repository";
 import { relativeTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +20,10 @@ function ignoredLabel(reason?: string | null, aiReason?: string | null) {
 
 export default async function OpportunityPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const o = await getOpportunity(id);
+  const [o, nextOpportunityId] = await Promise.all([
+    getOpportunity(id),
+    getNextOpportunityId(id),
+  ]);
   if (!o) notFound();
 
   return (
@@ -30,7 +34,12 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
           <h1>Review opportunity</h1>
           <div className="review-author-row"><UserAvatar author={o.author} avatarUrl={o.author_avatar_url} size="md" /><div><strong>{o.author ? `u/${o.author.replace(/^u\//, "")}` : "Unknown user"}</strong><div className="small muted">Detected {o.relativeTime}{o.thread_key ? ` • ${o.thread_key}` : ""}</div></div></div>
         </div>
-        {o.original_url ? <a className="btn secondary" href={o.original_url} target="_blank" rel="noreferrer">View full Reddit thread ↗</a> : null}
+        <div className="actions">
+          {o.original_url ? <a className="btn secondary" href={o.original_url} target="_blank" rel="noreferrer">View full Reddit thread ↗</a> : null}
+          <Link className="btn primary" href={nextOpportunityId ? `/opportunities/${nextOpportunityId}` : "/opportunities"}>
+            {nextOpportunityId ? "Next suggestion →" : "Back to queue"}
+          </Link>
+        </div>
       </div>
 
       {o.status === "ignored" ? (
@@ -53,7 +62,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
           <div className="field"><div className="label">Direct-answer confidence</div><div className="value">{o.classification ? `${Math.round(o.classification.answer_confidence * 100)}%` : "-"}</div></div>
         </div>
 
-        <OpportunityReview opportunity={o} />
+        <OpportunityReview opportunity={o} nextOpportunityId={nextOpportunityId} />
       </div>
 
       {o.thread_items?.length ? <ThreadContext items={o.thread_items} currentId={o.id} /> : null}
