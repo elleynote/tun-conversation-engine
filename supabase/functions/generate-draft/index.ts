@@ -52,8 +52,33 @@ Deno.serve(async (req: Request) => {
       products = (data ?? []).sort((a: any, b: any) => keys.indexOf(a.key) - keys.indexOf(b.key));
     }
 
-    const { data: rules } = await supabase.from("community_rules").select("*").eq("platform", opportunity.platform).eq("community", opportunity.community || "").maybeSingle();
+    const communityKey = String(opportunity.community || "").replace(/^r\//i, "").toLowerCase();
+    const { data: rules } = await supabase
+      .from("community_rules")
+      .select("*")
+      .eq("platform", opportunity.platform)
+      .ilike("community", communityKey)
+      .maybeSingle();
     const { data: brand } = await supabase.from("settings").select("value").eq("key", "brand_voice").maybeSingle();
+
+    const ruleNotes = String(rules?.notes || "").toLowerCase();
+    const promotionBlocked = rules?.links_allowed === false || String(rules?.self_promotion || "").toLowerCase() === "prohibited";
+    const manualReplyOnly = ruleNotes.includes("manual_reply_only");
+    const deprioritizeOrDrop = ruleNotes.includes("deprioritize_or_drop");
+
+    if (deprioritizeOrDrop) {
+      await supabase.from("opportunities").update({ status: "ignored", updated_at: new Date().toISOString() }).eq("id", opportunity_id);
+      return json({ ok: true, ignored: true, reason: "community policy deprioritizes automated engagement" });
+    }
+
+    if (manualReplyOnly) {
+      await supabase.from("opportunities").update({ status: "awaiting_review", updated_at: new Date().toISOString() }).eq("id", opportunity_id);
+      return json({ ok: true, manual_required: true, reason: "community requires a human-written reply" });
+    }
+
+    if (promotionBlocked) {
+      products = [];
+    }
     const result = await responses({
       model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra",
       reasoning: { effort: "low" },
@@ -80,8 +105,9 @@ Rules:
 - Respect community rules and avoid sensitive/inappropriate promotion.
 - Return only final reply text.
 
-Brand voice: ${brand?.value?.text || "Helpful, warm, practical and not salesy."}
-Community rules: ${rules?.rules_text || "No special rules supplied."}`,
+Brand voice: ${brand?.value?.text || "Casual, helpful, friendly and human. Answer the actual question first and do not sound salesy."}
+Community rules: ${rules?.rules_text || "No special rules supplied."}
+Community notes: ${rules?.notes || "None"}`,
       input: `Community: ${opportunity.community || "unknown"}
 Title: ${opportunity.title || ""}
 Primary conversation: ${opportunity.content}

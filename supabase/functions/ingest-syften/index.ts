@@ -19,6 +19,11 @@ function redditThreadInfo(url?: string | null) {
   }
 }
 
+function isSuppressedRedditAuthor(author?: string | null) {
+  const normalized = (author || "").trim().replace(/^u\//i, "").toLowerCase();
+  return normalized === "automoderator";
+}
+
 Deno.serve(async (req: Request) => {
   if (!cronRequestAuthorized(req)) return json({ error: "Unauthorized" }, 401);
   try {
@@ -44,12 +49,18 @@ Deno.serve(async (req: Request) => {
 
     let newest = after;
     let inserted = 0;
+    let filteredBots = 0;
     const touchedThreadKeys = new Set<string>();
 
     for (const m of matches) {
       if (!newest || new Date(m.matched_on) > new Date(newest)) newest = m.matched_on;
       const originalUrl = m.item?.item_url || null;
       const platform = m.item?.backend || "unknown";
+      const author = m.item?.author || null;
+      if (platform === "reddit" && isSuppressedRedditAuthor(author)) {
+        filteredBots++;
+        continue;
+      }
       const thread = originalUrl?.includes("reddit.com/")
         ? redditThreadInfo(originalUrl)
         : { threadKey: null, isThreadRoot: true };
@@ -61,7 +72,7 @@ Deno.serve(async (req: Request) => {
         external_id: m.id,
         platform,
         community: m.item?.backend_sub || null,
-        author: m.item?.author || null,
+        author,
         title: m.item?.title || null,
         content: m.item?.text || "",
         original_url: originalUrl,
@@ -114,9 +125,9 @@ Deno.serve(async (req: Request) => {
     }
     await supabase.from("settings").upsert({
       key: "syften_last_run",
-      value: { at: new Date().toISOString(), fetched: matches.length, processed: inserted, threads_touched: touchedThreadKeys.size }
+      value: { at: new Date().toISOString(), fetched: matches.length, processed: inserted, filtered_bots: filteredBots, threads_touched: touchedThreadKeys.size }
     }, { onConflict: "key" });
-    return json({ ok: true, fetched: matches.length, processed: inserted, cursor: newest, threads_touched: touchedThreadKeys.size });
+    return json({ ok: true, fetched: matches.length, processed: inserted, filtered_bots: filteredBots, cursor: newest, threads_touched: touchedThreadKeys.size });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
