@@ -67,6 +67,13 @@ Deno.serve(async (req: Request) => {
     ]);
     if (oppError) throw oppError; if (productError) throw productError;
 
+    const { data: communityRule } = await supabase
+      .from("community_rules")
+      .select("*")
+      .eq("platform", opportunity.platform)
+      .eq("community", opportunity.community || "")
+      .maybeSingle();
+
     let threadContext = "";
     if (opportunity.thread_key) {
       const { data: threadRows, error: threadError } = await supabase
@@ -85,12 +92,49 @@ Deno.serve(async (req: Request) => {
     const result = await responses({
       model: Deno.env.get("OPENAI_CLASSIFIER_MODEL") || "gpt-5.6-luna",
       reasoning: { effort: "low" },
-      instructions: `Classify public conversations for Tun's Armenian-language ecosystem. Be useful, selective and non-spammy. Use only listed product keys. Preserve the client rules exactly.\n\n${rules}\nProducts:\n${productList}`,
+      instructions: `Classify public conversations for Tun's Armenian-language ecosystem. Be useful, selective and non-spammy. Use only listed product keys. Preserve the client rules exactly.
+
+Community-specific rules are authoritative. If a community forbids promotion or product links, do not recommend a product there; prefer answer_only when a useful non-promotional answer is possible. If the community is marked manual_reply_only, keep it reviewable but do not generate an automated translation or machine-authored answer. If the community is marked deprioritize_or_drop, do_not_reply unless a human reviewer overrides it.
+
+${rules}
+Community policy:
+${communityRule?.rules_text || "No special rules supplied."}
+Community policy notes:
+${communityRule?.notes || "None"}
+Products:
+${productList}`,
       input: `Community: ${opportunity.community || "unknown"}\nTitle: ${opportunity.title || ""}\nPrimary conversation: ${opportunity.content}\n\nFull thread context:\n${threadContext || "(no additional thread context)"}`,
       text: { format: { type: "json_schema", name: "tun_opportunity_classification", strict: true, schema } },
     });
 
     const parsed = JSON.parse(outputText(result));
+
+    const communityNotes = String(communityRule?.notes || "").toLowerCase();
+    const promotionBlocked = communityRule?.links_allowed === false || String(communityRule?.self_promotion || "").toLowerCase() === "prohibited";
+    const manualReplyOnly = communityNotes.includes("manual_reply_only");
+    const deprioritizeOrDrop = communityNotes.includes("deprioritize_or_drop");
+
+    if (deprioritizeOrDrop) {
+      parsed.recommended_product_key = null;
+      parsed.recommended_product_keys = [];
+      parsed.response_mode = "do_not_reply";
+      parsed.should_reply = false;
+      parsed.reason = `${parsed.reason} Community policy: this subreddit is deprioritized for automated engagement.`;
+    } else if (promotionBlocked) {
+      parsed.recommended_product_key = null;
+      parsed.recommended_product_keys = [];
+      if (parsed.should_reply && parsed.response_mode !== "do_not_reply") {
+        parsed.response_mode = "answer_only";
+      }
+      parsed.reason = `${parsed.reason} Community policy: product promotion/links are not allowed here.`;
+    }
+
+    if (manualReplyOnly && parsed.should_reply && parsed.response_mode !== "do_not_reply") {
+      parsed.recommended_product_key = null;
+      parsed.recommended_product_keys = [];
+      parsed.response_mode = "answer_only";
+      parsed.reason = `${parsed.reason} Community policy: manual reply only; do not auto-generate a translation or machine-authored answer.`;
+    }
 
     // Client-approved deterministic routing guard:
     // A question that asks how to say/translate something AND is about a verb,
@@ -104,7 +148,7 @@ Deno.serve(async (req: Request) => {
     const hasVerbTask =
       /\bverb|conjugat|tense|inflect|verb\s+form|which\s+verb\b/i.test(routingText);
 
-    if (hasTranslationTask && hasVerbTask) {
+    if (hasTranslationTask && hasVerbTask && !promotionBlocked && !manualReplyOnly && !deprioritizeOrDrop) {
       parsed.recommended_product_key = "verbs";
       parsed.recommended_product_keys = ["verbs", "translator"];
       parsed.should_reply = true;
@@ -152,7 +196,7 @@ Deno.serve(async (req: Request) => {
       confidence: parsed.confidence,
       reason,
       model: Deno.env.get("OPENAI_CLASSIFIER_MODEL") || "gpt-5.6-luna",
-      prompt_version: "v5-verb-translation-routing",
+      prompt_version: "v6-community-policy-hardening",
       raw_output: result,
     };
 
