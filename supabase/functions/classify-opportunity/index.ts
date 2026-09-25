@@ -174,7 +174,13 @@ ${productList}`,
       parsed.reason = `${parsed.reason} Client routing rule: this is both a verb/conjugation task and an immediate translation/how-to-say task, so use the verb tool plus the translation tool.`;
     }
     const noReply = parsed.response_mode === "do_not_reply" || !parsed.should_reply;
-    const mixedVerbTranslation = !noReply && detectMixedVerbTranslation(opportunity, parsed);
+    const mixedVerbTranslation =
+      !noReply &&
+      !promotionBlocked &&
+      !manualReplyOnly &&
+      !deprioritizeOrDrop &&
+      !preservationWithoutDirectNeed &&
+      detectMixedVerbTranslation(opportunity, parsed);
 
     let keys = Array.isArray(parsed.recommended_product_keys)
       ? parsed.recommended_product_keys.slice(0, 3)
