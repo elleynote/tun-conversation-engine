@@ -1,14 +1,18 @@
 import { AppShell } from "@/components/app-shell";
+import { getAutomationStatus } from "@/lib/repository";
 import { connectionStatus } from "@/lib/runtime";
 
 export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
-  const s = connectionStatus();
+export default async function SettingsPage() {
+  const [s, automation] = await Promise.all([
+    Promise.resolve(connectionStatus()),
+    getAutomationStatus(),
+  ]);
   const rows = [
     ["Supabase", s.supabase ? "Configured" : "Waiting", s.supabase ? "on" : "", "Database + Edge Functions"],
-    ["OpenAI", s.openai ? "Configured" : "Waiting", s.openai ? "on" : "", "Classification + drafting"],
-    ["Syften", s.syften ? "Configured" : "Waiting", s.syften ? "on" : "", "Reddit discovery + monitoring"],
+    ["OpenAI", automation.openAIConnected ? "Configured" : "Waiting", automation.openAIConnected ? "on" : "", "Classification + drafting"],
+    ["Syften", automation.syftenConnected ? "Configured" : "Waiting", automation.syftenConnected ? "on" : "", "Reddit discovery + monitoring"],
     ["Reddit posting", "Manual", "manual", "Copy approved reply → open Reddit → post → mark as posted"],
     ["Dashboard access", "No login", "manual", "Current single-business phase: no sign-up or login. Add auth only if this becomes a multi-business product."],
     ["Netlify runtime", s.netlify ? "Configured" : "Waiting", s.netlify ? "on" : "", "Dashboard hosting"],
