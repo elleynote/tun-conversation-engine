@@ -4,7 +4,7 @@ import { useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { OpportunityView, OpportunityStatus } from "@/lib/types";
 
-export function OpportunityReview({ opportunity }: { opportunity: OpportunityView }) {
+export function OpportunityReview({ opportunity, nextOpportunityId }: { opportunity: OpportunityView; nextOpportunityId: string | null }) {
   const router = useRouter();
   const [draft, setDraft] = useState(opportunity.draft?.body ?? "");
   const [status, setStatus] = useState<OpportunityStatus>(opportunity.status);
@@ -60,6 +60,23 @@ export function OpportunityReview({ opportunity }: { opportunity: OpportunityVie
     await copyReply();
   }
 
+  function goToNextSuggestion() {
+    router.push(nextOpportunityId ? `/opportunities/${nextOpportunityId}` : "/opportunities");
+  }
+
+  async function dismissAndNext() {
+    setBusy(true); setMessage("");
+    try {
+      const res = await fetch(`/api/opportunities/${opportunity.id}/dismiss`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Could not dismiss suggestion");
+      goToNextSuggestion();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Something went wrong");
+      setBusy(false);
+    }
+  }
+
   if (status === "ignored" && !draft.trim()) {
     return (
       <div className="card panel">
@@ -70,6 +87,8 @@ export function OpportunityReview({ opportunity }: { opportunity: OpportunityVie
         <p className="muted">The AI did not queue this conversation, but you can override that decision. Overrides are saved in the activity history so we can use them to improve the rules later.</p>
         <div className="actions">
           <button className="btn primary" disabled={busy} onClick={promote}>Mark as reply opportunity</button>
+          <button className="btn danger" disabled={busy} onClick={dismissAndNext}>Dismiss & next</button>
+          <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
           {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">View Reddit thread ↗</a> : null}
         </div>
         {message ? <p className="small muted">{message}</p> : null}
@@ -97,6 +116,8 @@ export function OpportunityReview({ opportunity }: { opportunity: OpportunityVie
           <button className="btn success" disabled={busy || !draft.trim()} onClick={() => update("approved")}>Approve</button>
           <button className="btn secondary" disabled={busy || !draft.trim()} onClick={() => update("awaiting_review")}>Save edit</button>
           <button className="btn danger" disabled={busy} onClick={() => update("rejected", false)}>Reject</button>
+          <button className="btn danger" disabled={busy} onClick={dismissAndNext}>Dismiss & next</button>
+          <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
           {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">View Reddit thread ↗</a> : null}
         </div>
       ) : null}
@@ -110,6 +131,7 @@ export function OpportunityReview({ opportunity }: { opportunity: OpportunityVie
             {opportunity.original_url ? <button className="btn secondary" disabled={busy || !draft.trim()} onClick={copyAndOpenReddit}>Copy + open Reddit</button> : null}
             {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">Open Reddit only ↗</a> : null}
             {!posted ? <button className="btn success" disabled={busy} onClick={() => update("posted", false)}>Mark as posted</button> : null}
+            <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
           </div>
         </div>
       ) : null}
