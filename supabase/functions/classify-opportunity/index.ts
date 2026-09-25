@@ -67,11 +67,12 @@ Deno.serve(async (req: Request) => {
     ]);
     if (oppError) throw oppError; if (productError) throw productError;
 
+    const communityKey = String(opportunity.community || "").replace(/^r\//i, "").toLowerCase();
     const { data: communityRule } = await supabase
       .from("community_rules")
       .select("*")
       .eq("platform", opportunity.platform)
-      .eq("community", opportunity.community || "")
+      .ilike("community", communityKey)
       .maybeSingle();
 
     let threadContext = "";
