@@ -76,7 +76,7 @@ export async function listOpportunities(options: { includeSuppressed?: boolean }
   const rows = (data ?? []).map((row: any) => mapOpportunity(row, productRows));
   return options.includeSuppressed
     ? rows
-    : rows.filter((row) => !["thread_context_only", "manual_dismissed"].includes(row.suppression_reason ?? ""));
+    : rows.filter((row) => !["thread_context_only", "manual_dismissed", "youtube_video_source"].includes(row.suppression_reason ?? ""));
 }
 
 export async function getOpportunity(id: string): Promise<OpportunityView | null> {
@@ -184,7 +184,9 @@ export async function getAutomationStatus(): Promise<AutomationStatus> {
     return {
       syftenConnected: false,
       openAIConnected: false,
+      youtubeConnected: false,
       lastSyftenCheck: null,
+      lastYouTubeCheck: null,
       lastPipelineRun: null,
       lastSyftenCursor: null,
       newToday: 0,
@@ -196,19 +198,22 @@ export async function getAutomationStatus(): Promise<AutomationStatus> {
   today.setUTCHours(0, 0, 0, 0);
 
   const [{ data: settings }, { count }] = await Promise.all([
-    supabase.from("settings").select("key,value").in("key", ["syften_cursor", "syften_last_run", "pipeline_last_run"]),
+    supabase.from("settings").select("key,value").in("key", ["syften_cursor", "syften_last_run", "youtube_last_run", "pipeline_last_run"]),
     supabase.from("opportunities").select("id", { count: "exact", head: true }).gte("detected_at", today.toISOString()),
   ]);
 
   const values = new Map((settings ?? []).map((row: any) => [row.key, row.value]));
   const syftenRun: any = values.get("syften_last_run");
+  const youtubeRun: any = values.get("youtube_last_run");
   const pipelineRun: any = values.get("pipeline_last_run");
   const cursor: any = values.get("syften_cursor");
 
   return {
     syftenConnected: Boolean(syftenRun?.at || cursor?.matched_on || hasSyften()),
     openAIConnected: Boolean(pipelineRun?.at || hasOpenAI()),
+    youtubeConnected: Boolean(youtubeRun?.at),
     lastSyftenCheck: syftenRun?.at ?? null,
+    lastYouTubeCheck: youtubeRun?.at ?? null,
     lastPipelineRun: pipelineRun?.at ?? null,
     lastSyftenCursor: cursor?.matched_on ?? null,
     newToday: count ?? 0,
