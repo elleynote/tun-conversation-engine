@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
     const result = await responses({
       model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra",
       reasoning: { effort: "low" },
-      instructions: `Write one natural public Reddit reply for Tun's Armenian-language ecosystem.
+      instructions: `Write one natural public ${opportunity.platform === "youtube" ? "YouTube comment reply" : opportunity.platform === "reddit" ? "Reddit reply" : "social reply"} for Tun's Armenian-language ecosystem.
 
 Follow response_mode exactly:
 - answer_and_recommend: briefly answer the actual question first, then naturally recommend only approved resources below.
@@ -96,14 +96,14 @@ Rules:
 - If mentioning something we own, be transparent and natural, for example "we built..." or "we offer..."; never pretend to be unaffiliated.
 - The 4 lessons for $1 offer may appear only when the person has a genuine learning need and it fits naturally. Never lead with the offer or use it as sales copy.
 - Be concise, casual, helpful, friendly and human.
-- Do not pretend to be an unaffiliated ordinary Reddit user.
+- Do not pretend to be an unaffiliated ordinary user.
 - Do not dump several products simply because they exist.
 - Use only approved claims/URLs below.
 - The classifier has already selected the relevant resources. For answer_and_recommend or recommend_only, if more than one approved resource is supplied, mention EVERY supplied approved resource exactly once. Do not silently drop one of the classifier-selected resources.
 - When Tun + the Armenian Verb Conjugation Tool + English to Armenian Translation are approved together, keep the Tun mention brief and natural, then explain the immediate jobs clearly: armenianverbs.com for verb forms/tenses and translatearmenian.com for quick English-to-Western-Armenian translation. Do not make the reply feel like a catalogue.
 - If exact Armenian wording, translation, pronunciation, dialect or grammar is uncertain, do not guess.
 - An existing answer elsewhere in the thread does not automatically prevent a reply. Add distinct value instead of repeating what is already there.
-- Default to one useful reply to the thread. Do not address every comment unless a reviewer separately promotes a comment as its own opportunity.
+- Default to one useful reply to the conversation. Do not address every nested comment/reply unless a reviewer separately promotes it as its own opportunity.
 - Respect community rules and avoid sensitive/inappropriate promotion.
 - Return only final reply text.
 
@@ -146,7 +146,7 @@ ${approvedProductContext(products)}`,
       const repaired = await responses({
         model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra",
         reasoning: { effort: "low" },
-        instructions: `Revise the supplied Reddit reply without changing its useful answer.
+        instructions: `Revise the supplied ${opportunity.platform === "youtube" ? "YouTube" : opportunity.platform === "reddit" ? "Reddit" : "social"} reply without changing its useful answer.
 
 Requirements:
 - Keep it concise, warm, practical, human and not salesy.
