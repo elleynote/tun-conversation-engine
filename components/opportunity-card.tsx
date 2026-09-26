@@ -17,7 +17,10 @@ function ignoredReason(opportunity: OpportunityView) {
 
 export function OpportunityCard({ opportunity }: { opportunity: OpportunityView }) {
   const reason = ignoredReason(opportunity);
-  const platform = opportunity.platform ? opportunity.platform.charAt(0).toUpperCase() + opportunity.platform.slice(1) : "Reddit";
+  const platform = opportunity.platform ? opportunity.platform.charAt(0).toUpperCase() + opportunity.platform.slice(1) : "Source";
+  const authorLabel = opportunity.author
+    ? opportunity.platform === "reddit" ? `u/${opportunity.author.replace(/^u\//, "")}` : opportunity.author
+    : "Unknown user";
 
   return (
     <article className="card opportunity">
@@ -40,14 +43,14 @@ export function OpportunityCard({ opportunity }: { opportunity: OpportunityView 
 
       <div className="opp-footer">
         <div className="meta">
-          <span className="author-chip"><UserAvatar author={opportunity.author} avatarUrl={opportunity.author_avatar_url} /><span>{opportunity.author ? `u/${opportunity.author.replace(/^u\//, "")}` : "Unknown user"}</span></span>
+          <span className="author-chip"><UserAvatar author={opportunity.author} avatarUrl={opportunity.author_avatar_url} /><span>{authorLabel}</span></span>
           <span className="score">Score {opportunity.classification?.relevance_score ?? "-"}/5</span>
           {opportunity.classification?.intent ? <span>Intent: {opportunity.classification.intent.replaceAll("_", " ")}</span> : null}
           {opportunity.classification?.response_mode ? <span>Mode: {opportunity.classification.response_mode.replaceAll("_", " ")}</span> : null}
           {opportunity.products?.length ? <span>Route: {opportunity.products.map((p) => p.name).join(" + ")}</span> : null}
         </div>
         <div className="card-links">
-          {opportunity.original_url ? <a className="link" href={opportunity.original_url} target="_blank" rel="noreferrer">View Reddit thread ↗</a> : null}
+          {opportunity.original_url ? <a className="link" href={opportunity.original_url} target="_blank" rel="noreferrer">{opportunity.platform === "youtube" ? "View YouTube comment ↗" : opportunity.platform === "reddit" ? "View Reddit thread ↗" : "View source ↗"}</a> : null}
           <Link className="link" href={`/opportunities/${opportunity.id}`}>Review →</Link>
         </div>
       </div>
