@@ -3,6 +3,9 @@ project_id = "tun-conversation-engine"
 [functions.ingest-syften]
 verify_jwt = false
 
+[functions.ingest-youtube-comments]
+verify_jwt = false
+
 [functions.process-pipeline]
 verify_jwt = false
 
