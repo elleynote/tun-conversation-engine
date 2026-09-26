@@ -114,7 +114,7 @@ th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spa
 .success-note { padding: 13px 14px; border-radius: 12px; background: var(--green-soft); border: 1px solid #c8ead6; color: #135f39; font-size: 13px; }
 
 .automation-panel { margin-top: 4px; }
-.automation-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.automation-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
 .automation-item { min-height: 70px; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: #fafbfc; display: flex; align-items: center; gap: 8px; }
 .automation-item strong { font-size: 13px; }
 
