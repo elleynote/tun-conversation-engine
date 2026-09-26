@@ -14,6 +14,10 @@ export function hasSyften() {
   return Boolean(process.env.SYFTEN_API_TOKEN);
 }
 
+export function hasYouTube() {
+  return Boolean(process.env.YOUTUBE_API_KEY);
+}
+
 export function hasRedditPublishing() {
   if (process.env.REDDIT_PUBLISHING_ENABLED !== "true") return false;
   return Boolean(process.env.REDDIT_DEVVIT_APP_SLUG || (process.env.REDDIT_CLIENT_ID && process.env.REDDIT_CLIENT_SECRET && process.env.REDDIT_REFRESH_TOKEN));
@@ -25,6 +29,7 @@ export function connectionStatus() {
     supabase: hasSupabase(),
     openai: hasOpenAI(),
     syften: hasSyften(),
+    youtube: hasYouTube(),
     redditPublishing: hasRedditPublishing(),
     netlify: Boolean(process.env.URL || process.env.SITE_ID || process.env.SITE_NAME || process.env.NETLIFY || process.env.DEPLOY_ID),
   };
