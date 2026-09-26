@@ -26,6 +26,14 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
     getNextOpportunityId(id),
   ]);
   if (!o) notFound();
+  const authorLabel = o.author
+    ? o.platform === "reddit" ? `u/${o.author.replace(/^u\//, "")}` : o.author
+    : "Unknown user";
+  const sourceLinkLabel = o.platform === "youtube"
+    ? "View YouTube comment ↗"
+    : o.platform === "reddit"
+      ? "View full Reddit thread ↗"
+      : "View source ↗";
 
   return (
     <AppShell>
@@ -33,10 +41,10 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
         <div>
           <div className="eyebrow">{o.platform} • {o.community ?? "Public conversation"}</div>
           <h1>Review opportunity</h1>
-          <div className="review-author-row"><UserAvatar author={o.author} avatarUrl={o.author_avatar_url} size="md" /><div><strong>{o.author ? `u/${o.author.replace(/^u\//, "")}` : "Unknown user"}</strong><div className="small muted">Detected {o.relativeTime}{o.thread_key ? ` • ${o.thread_key}` : ""}</div></div></div>
+          <div className="review-author-row"><UserAvatar author={o.author} avatarUrl={o.author_avatar_url} size="md" /><div><strong>{authorLabel}</strong><div className="small muted">Detected {o.relativeTime}{o.thread_key ? ` • ${o.thread_key}` : ""}</div></div></div>
         </div>
         <div className="actions">
-          {o.original_url ? <a className="btn secondary" href={o.original_url} target="_blank" rel="noreferrer">View full Reddit thread ↗</a> : null}
+          {o.original_url ? <a className="btn secondary" href={o.original_url} target="_blank" rel="noreferrer">{sourceLinkLabel}</a> : null}
           <Link className="btn primary" href={nextOpportunityId ? `/opportunities/${nextOpportunityId}` : "/opportunities"}>
             {nextOpportunityId ? "Next suggestion →" : "Back to queue"}
           </Link>
@@ -73,7 +81,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
             <div className="field"><div className="label">Direct-answer confidence</div><div className="value">{o.classification ? `${Math.round(o.classification.answer_confidence * 100)}%` : "-"}</div></div>
           </div>
 
-          {o.thread_items?.length ? <ThreadContext items={o.thread_items} currentId={o.id} /> : null}
+          {o.thread_items?.length ? <ThreadContext items={o.thread_items} currentId={o.id} platform={o.platform} /> : null}
 
           <section className="card panel section">
             <div className="section-head"><div><div className="eyebrow">Audit trail</div><h2>Activity</h2></div></div>
