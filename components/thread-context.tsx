@@ -48,7 +48,7 @@ export function ThreadContext({ items, currentId, platform }: { items: ThreadIte
               <div className="thread-body">
                 <div className="thread-meta-row">
                   <div><strong>{item.author ? (platform === "reddit" ? `u/${item.author.replace(/^u\//, "")}` : item.author) : "Unknown user"}</strong><span> • {item.relativeTime}</span></div>
-                  <span className={`badge ${item.is_thread_root ? "blue" : ""}`}>{item.is_thread_root ? "original post" : "comment"}</span>
+                  <span className={`badge ${item.is_thread_root ? "blue" : ""}`}>{item.is_thread_root ? (platform === "youtube" ? "top-level comment" : "original post") : (platform === "youtube" ? "reply" : "comment")}</span>
                 </div>
                 <div className="thread-content">{item.content}</div>
                 <div className="actions compact">
