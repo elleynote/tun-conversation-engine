@@ -24,6 +24,24 @@ function isSuppressedRedditAuthor(author?: string | null) {
   return normalized === "automoderator";
 }
 
+function youtubeVideoId(url?: string | null) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    if (host === "youtu.be") return parsed.pathname.split("/").filter(Boolean)[0] || null;
+    if (host === "youtube.com" || host.endsWith(".youtube.com")) {
+      const watchId = parsed.searchParams.get("v");
+      if (watchId) return watchId;
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      if (["shorts", "live", "embed"].includes(parts[0] || "")) return parts[1] || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (!cronRequestAuthorized(req)) return json({ error: "Unauthorized" }, 401);
   try {
@@ -55,7 +73,9 @@ Deno.serve(async (req: Request) => {
     for (const m of matches) {
       if (!newest || new Date(m.matched_on) > new Date(newest)) newest = m.matched_on;
       const originalUrl = m.item?.item_url || null;
-      const platform = m.item?.backend || "unknown";
+      const detectedYouTubeVideoId = youtubeVideoId(originalUrl);
+      const rawPlatform = String(m.item?.backend || "unknown").toLowerCase();
+      const platform = detectedYouTubeVideoId ? "youtube" : rawPlatform;
       const author = m.item?.author || null;
       if (platform === "reddit" && isSuppressedRedditAuthor(author)) {
         filteredBots++;
@@ -79,12 +99,17 @@ Deno.serve(async (req: Request) => {
         published_at: m.item?.timestamp || null,
         detected_at: m.matched_on,
         matched_filter: m.filter,
-        status: thread.threadKey && !thread.isThreadRoot ? "ignored" : "new",
-        source_analysis: m.item?.analysis || {},
+        status: detectedYouTubeVideoId ? "ignored" : (thread.threadKey && !thread.isThreadRoot ? "ignored" : "new"),
+        source_analysis: {
+          ...(m.item?.analysis || {}),
+          ...(detectedYouTubeVideoId ? { youtube_video_id: detectedYouTubeVideoId, youtube_discovery: true } : {}),
+        },
         raw_payload: m,
         thread_key: thread.threadKey,
         is_thread_root: thread.isThreadRoot,
-        suppression_reason: thread.threadKey && !thread.isThreadRoot ? "thread_context_only" : null,
+        suppression_reason: detectedYouTubeVideoId
+          ? "youtube_video_source"
+          : (thread.threadKey && !thread.isThreadRoot ? "thread_context_only" : null),
       }, { onConflict: "source_id,external_id", ignoreDuplicates: true });
       if (!error) inserted++;
     }
