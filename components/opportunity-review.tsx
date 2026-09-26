@@ -55,7 +55,9 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
     }
   }
 
-  async function copyAndOpenReddit() {
+  const platformLabel = opportunity.platform === "youtube" ? "YouTube" : opportunity.platform === "reddit" ? "Reddit" : "source";
+
+  async function copyAndOpenSource() {
     if (opportunity.original_url) window.open(opportunity.original_url, "_blank", "noopener,noreferrer");
     await copyReply();
   }
@@ -89,7 +91,7 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
           <button className="btn primary" disabled={busy} onClick={promote}>Mark as reply opportunity</button>
           <button className="btn danger" disabled={busy} onClick={dismissAndNext}>Dismiss & next</button>
           <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
-          {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">View Reddit thread ↗</a> : null}
+          {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">{platformLabel === "YouTube" ? "View YouTube comment ↗" : platformLabel === "Reddit" ? "View Reddit thread ↗" : "View source ↗"}</a> : null}
         </div>
         {message ? <p className="small muted">{message}</p> : null}
       </div>
@@ -118,25 +120,25 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
           <button className="btn danger" disabled={busy} onClick={() => update("rejected", false)}>Reject</button>
           <button className="btn danger" disabled={busy} onClick={dismissAndNext}>Dismiss & next</button>
           <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
-          {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">View Reddit thread ↗</a> : null}
+          {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">{platformLabel === "YouTube" ? "View YouTube comment ↗" : platformLabel === "Reddit" ? "View Reddit thread ↗" : "View source ↗"}</a> : null}
         </div>
       ) : null}
 
       {approved || posted ? (
         <div className="manual-post-box">
-          <div className="label">Manual Reddit posting</div>
-          <p className="small muted">Reddit API access was not approved, so the final step is manual. Copy the approved reply, open the Reddit thread, post it, then mark it as posted here.</p>
+          <div className="label">Manual {platformLabel} posting</div>
+          <p className="small muted">The final posting step is manual for {platformLabel}. Copy the approved reply, open the original conversation, post it, then mark it as posted here.</p>
           <div className="actions">
             <button className="btn primary" disabled={busy || !draft.trim()} onClick={copyReply}>Copy reply</button>
-            {opportunity.original_url ? <button className="btn secondary" disabled={busy || !draft.trim()} onClick={copyAndOpenReddit}>Copy + open Reddit</button> : null}
-            {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">Open Reddit only ↗</a> : null}
+            {opportunity.original_url ? <button className="btn secondary" disabled={busy || !draft.trim()} onClick={copyAndOpenSource}>Copy + open {platformLabel}</button> : null}
+            {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">Open {platformLabel} only ↗</a> : null}
             {!posted ? <button className="btn success" disabled={busy} onClick={() => update("posted", false)}>Mark as posted</button> : null}
             <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
           </div>
         </div>
       ) : null}
 
-      {posted ? <div className="success-note section-tight"><strong>Posted manually.</strong> This opportunity is complete.</div> : null}
+      {posted ? <div className="success-note section-tight"><strong>Posted manually to {platformLabel}.</strong> This opportunity is complete.</div> : null}
       {message ? <p className="small muted">{message}</p> : null}
     </div>
   );
