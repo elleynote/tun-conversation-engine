@@ -12,8 +12,10 @@ export default async function SettingsPage() {
   const rows = [
     ["Supabase", s.supabase ? "Configured" : "Waiting", s.supabase ? "on" : "", "Database + Edge Functions"],
     ["OpenAI", automation.openAIConnected ? "Configured" : "Waiting", automation.openAIConnected ? "on" : "", "Classification + drafting"],
-    ["Syften", automation.syftenConnected ? "Configured" : "Waiting", automation.syftenConnected ? "on" : "", "Reddit discovery + monitoring"],
+    ["Syften", automation.syftenConnected ? "Configured" : "Waiting", automation.syftenConnected ? "on" : "", "Multi-platform discovery and monitoring"],
+    ["YouTube comments", automation.youtubeConnected ? "Connected" : "Waiting for API key", automation.youtubeConnected ? "on" : "", "Fetch public comments from Syften-discovered YouTube videos"],
     ["Reddit posting", "Manual", "manual", "Copy approved reply → open Reddit → post → mark as posted"],
+    ["YouTube posting", "Manual", "manual", "Copy approved reply → open YouTube → post → mark as posted"],
     ["Dashboard access", "No login", "manual", "Current single-business phase: no sign-up or login. Add auth only if this becomes a multi-business product."],
     ["Netlify runtime", s.netlify ? "Configured" : "Waiting", s.netlify ? "on" : "", "Dashboard hosting"],
   ] as const;
@@ -27,7 +29,7 @@ export default async function SettingsPage() {
         </tbody></table>
       </div>
       <div className="section success-note"><strong>Notification preference:</strong> dashboard only. Reviewers see new/awaiting-review opportunities inside this app.</div>
-      <div className="section notice"><strong>Reddit launch flow:</strong> Reddit did not approve API posting access, so posting is intentionally manual. Approve the reply, copy it, open Reddit, post it, then mark the opportunity as posted.</div>
+      <div className="section notice"><strong>Posting flow:</strong> Reddit remains manual. YouTube also starts in manual-posting mode; once Google OAuth/channel access is approved, direct YouTube posting can be added without changing the review workflow.</div>
     </AppShell>
   );
 }
