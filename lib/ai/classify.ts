@@ -46,7 +46,7 @@ export async function classifyConversation(input: { title?: string | null; conte
   const data = await openAIResponse({
     model: process.env.OPENAI_CLASSIFIER_MODEL || "gpt-5.6-luna",
     reasoning: { effort: "low" },
-    instructions: `You classify public conversations for Tun's Armenian-language ecosystem. Be conservative and useful. A high score means the ecosystem can genuinely help the person's actual question. Never force a commercial intervention. Use only provided product keys. Preserve the client's decision rules exactly.\n\n${recommendationRules}\nProducts:\n${productKeys}`,
+    instructions: `You classify public conversations for Tun's Armenian-language ecosystem across supported platforms. Be conservative and useful. A high score means the ecosystem can genuinely help the person's actual question. Never force a commercial intervention. Use only provided product keys. Preserve the client's decision rules exactly.\n\n${recommendationRules}\nProducts:\n${productKeys}`,
     input: `Community: ${input.community ?? "unknown"}\nTitle: ${input.title ?? ""}\nConversation: ${input.content}`,
     text: { format: { type: "json_schema", name: "tun_opportunity_classification", strict: true, schema } },
   });
