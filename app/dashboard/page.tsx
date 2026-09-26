@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   return (
     <AppShell>
       <div className="page-head">
-        <div><div className="eyebrow">Phase 1 • Reddit</div><h1>Conversation Engine</h1><div className="muted">Find relevant conversations, answer where appropriate, recommend the right Tun resource, and keep a human in control.</div></div>
+        <div><div className="eyebrow">Multi-platform • Reddit + YouTube</div><h1>Conversation Engine</h1><div className="muted">Find relevant conversations, answer where appropriate, recommend the right Tun resource, and keep a human in control.</div></div>
         <span className={`badge ${status.mode === "live" ? "green" : "amber"}`}>{status.mode} mode</span>
       </div>
 
@@ -43,7 +43,9 @@ export default async function DashboardPage() {
         <div className="automation-grid">
           <div className="automation-item"><span className={`status-dot ${automation.syftenConnected ? "on" : ""}`} /><div><strong>Syften</strong><div className="small muted">{automation.syftenConnected ? "Connected" : "Waiting for token"}</div></div></div>
           <div className="automation-item"><span className={`status-dot ${automation.openAIConnected ? "on" : ""}`} /><div><strong>OpenAI</strong><div className="small muted">{automation.openAIConnected ? "Connected" : "Waiting for API key"}</div></div></div>
+          <div className="automation-item"><span className={`status-dot ${automation.youtubeConnected ? "on" : ""}`} /><div><strong>YouTube</strong><div className="small muted">{automation.youtubeConnected ? "Comments connected" : "Waiting for API key / first run"}</div></div></div>
           <div className="automation-item"><div><div className="label">Last Syften check</div><strong>{automation.lastSyftenCheck ? relativeTime(automation.lastSyftenCheck) : "Waiting for next run"}</strong></div></div>
+          <div className="automation-item"><div><div className="label">Last YouTube check</div><strong>{automation.lastYouTubeCheck ? relativeTime(automation.lastYouTubeCheck) : "Waiting for first run"}</strong></div></div>
           <div className="automation-item"><div><div className="label">Last AI pipeline run</div><strong>{automation.lastPipelineRun ? relativeTime(automation.lastPipelineRun) : "Waiting for next run"}</strong></div></div>
           <div className="automation-item"><div><div className="label">Syften matches today</div><strong>{automation.newToday}</strong></div></div>
         </div>
