@@ -342,6 +342,6 @@ export async function updateOpportunity(id: string, payload: { status: Opportuni
     }
   }
 
-  await supabase.from("actions").insert({ opportunity_id: id, action_type: payload.status, metadata: { source: "dashboard", manual_reddit_posting: payload.status === "posted" } });
+  await supabase.from("actions").insert({ opportunity_id: id, action_type: payload.status, metadata: { source: "dashboard", manual_posting: payload.status === "posted" } });
   return { mode: "live" as const };
 }
