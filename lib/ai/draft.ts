@@ -28,7 +28,7 @@ export async function generateDraft(input: {
   const data = await openAIResponse({
     model: process.env.OPENAI_DRAFT_MODEL || "gpt-5.6-terra",
     reasoning: { effort: "low" },
-    instructions: `Write one natural public reply for Tun's Armenian-language ecosystem.
+    instructions: `Write one natural public reply for Tun's Armenian-language ecosystem on the source platform.
 
 Follow the response mode exactly:
 - answer_and_recommend: briefly answer the person's actual question first, then naturally mention only the approved resources below.
