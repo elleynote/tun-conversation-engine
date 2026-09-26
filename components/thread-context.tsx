@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { UserAvatar } from "@/components/user-avatar";
 import type { ThreadItem } from "@/lib/types";
 
-export function ThreadContext({ items, currentId }: { items: ThreadItem[]; currentId: string }) {
+export function ThreadContext({ items, currentId, platform }: { items: ThreadItem[]; currentId: string; platform: string }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const platformLabel = platform === "youtube" ? "YouTube" : platform === "reddit" ? "Reddit" : "source";
 
   async function promote(id: string) {
     setBusyId(id);
@@ -30,12 +31,12 @@ export function ThreadContext({ items, currentId }: { items: ThreadItem[]; curre
     <section className="card panel section">
       <div className="section-head">
         <div>
-          <div className="eyebrow">Thread context</div>
-          <h2>Original post + relevant comments</h2>
+          <div className="eyebrow">Conversation context</div>
+          <h2>{platform === "youtube" ? "YouTube comment thread" : "Original post + relevant comments"}</h2>
         </div>
         <span className="badge blue">{items.length} item{items.length === 1 ? "" : "s"}</span>
       </div>
-      <p className="small muted thread-guidance">Default approach: reply once to the main thread. Promote a comment only when it asks a distinct question that deserves its own response.</p>
+      <p className="small muted thread-guidance">Default approach: reply once to the main conversation. Promote a nested item only when it asks a distinct question that deserves its own response.</p>
       <div className="thread-list">
         {items.map((item) => {
           const isCurrent = item.id === currentId;
@@ -46,12 +47,12 @@ export function ThreadContext({ items, currentId }: { items: ThreadItem[]; curre
               <div className="thread-avatar"><UserAvatar author={item.author} avatarUrl={item.author_avatar_url} size="md" /></div>
               <div className="thread-body">
                 <div className="thread-meta-row">
-                  <div><strong>{item.author ? `u/${item.author.replace(/^u\//, "")}` : "Unknown user"}</strong><span> • {item.relativeTime}</span></div>
+                  <div><strong>{item.author ? (platform === "reddit" ? `u/${item.author.replace(/^u\//, "")}` : item.author) : "Unknown user"}</strong><span> • {item.relativeTime}</span></div>
                   <span className={`badge ${item.is_thread_root ? "blue" : ""}`}>{item.is_thread_root ? "original post" : "comment"}</span>
                 </div>
                 <div className="thread-content">{item.content}</div>
                 <div className="actions compact">
-                  {item.original_url ? <a className="link" href={item.original_url} target="_blank" rel="noreferrer">Open on Reddit ↗</a> : null}
+                  {item.original_url ? <a className="link" href={item.original_url} target="_blank" rel="noreferrer">Open on {platformLabel} ↗</a> : null}
                   {canPromote ? <button className="text-button" disabled={busyId === item.id} onClick={() => promote(item.id)}>{busyId === item.id ? "Adding..." : "Make reply opportunity"}</button> : null}
                   {!isCurrent && !isContextOnly ? <a className="link" href={`/opportunities/${item.id}`}>Review reply →</a> : null}
                 </div>
