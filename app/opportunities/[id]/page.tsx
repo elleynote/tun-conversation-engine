@@ -47,41 +47,50 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
         <div className="notice ignored-banner"><strong>AI did not queue a reply:</strong> {ignoredLabel(o.suppression_reason, o.classification?.reason)}. A reviewer can override this decision from the reply panel.</div>
       ) : null}
 
-      <div className="columns section">
-        <div className="card panel">
-          <div className="eyebrow">Original conversation</div>
-          <h2>{o.title || "Conversation"}</h2>
-          <p className="quote">{o.content}</p>
-          <div className="divider" />
-          <div className="field"><div className="label">Matched filter</div><div className="value">{o.matched_filter || "-"}</div></div>
-          <div className="field"><div className="label">AI reason</div><div>{o.classification?.reason || "Not classified yet"}</div></div>
-          <div className="field"><div className="label">Intent</div><div className="value">{o.classification?.intent?.replaceAll("_", " ") || "-"}</div></div>
-          <div className="field"><div className="label">Response mode</div><div className="value">{o.classification?.response_mode?.replaceAll("_", " ") || "-"}</div></div>
-          <div className="field"><div className="label">Dialect</div><div className="value">{o.classification?.dialect || "-"}</div></div>
-          <div className="field"><div className="label">Recommended resources</div><div className="value">{o.products?.length ? o.products.map((p) => p.name).join(" + ") : "None"}</div></div>
-          <div className="field"><div className="label">Relevance / classifier confidence</div><div className="value">{o.classification ? `${o.classification.relevance_score}/5 • ${Math.round(o.classification.confidence * 100)}%` : "-"}</div></div>
-          <div className="field"><div className="label">Direct-answer confidence</div><div className="value">{o.classification ? `${Math.round(o.classification.answer_confidence * 100)}%` : "-"}</div></div>
+      <div className="review-layout section">
+        <div className="review-main">
+          <div className="card panel">
+            <div className="eyebrow">Original conversation</div>
+            <h2>{o.title || "Conversation"}</h2>
+            <p className="quote">{o.content}</p>
+          </div>
+
+          <OpportunityReview opportunity={o} nextOpportunityId={nextOpportunityId} />
         </div>
 
-        <OpportunityReview opportunity={o} nextOpportunityId={nextOpportunityId} />
-      </div>
+        <aside className="review-details">
+          <div className="card panel">
+            <div className="eyebrow">Suggestion details</div>
+            <h2>Why this was selected</h2>
+            <div className="divider" />
+            <div className="field"><div className="label">Matched filter</div><div className="value">{o.matched_filter || "-"}</div></div>
+            <div className="field"><div className="label">AI reason</div><div>{o.classification?.reason || "Not classified yet"}</div></div>
+            <div className="field"><div className="label">Intent</div><div className="value">{o.classification?.intent?.replaceAll("_", " ") || "-"}</div></div>
+            <div className="field"><div className="label">Response mode</div><div className="value">{o.classification?.response_mode?.replaceAll("_", " ") || "-"}</div></div>
+            <div className="field"><div className="label">Dialect</div><div className="value">{o.classification?.dialect || "-"}</div></div>
+            <div className="field"><div className="label">Recommended resources</div><div className="value">{o.products?.length ? o.products.map((p) => p.name).join(" + ") : "None"}</div></div>
+            <div className="field"><div className="label">Relevance / classifier confidence</div><div className="value">{o.classification ? `${o.classification.relevance_score}/5 • ${Math.round(o.classification.confidence * 100)}%` : "-"}</div></div>
+            <div className="field"><div className="label">Direct-answer confidence</div><div className="value">{o.classification ? `${Math.round(o.classification.answer_confidence * 100)}%` : "-"}</div></div>
+          </div>
 
-      {o.thread_items?.length ? <ThreadContext items={o.thread_items} currentId={o.id} /> : null}
+          {o.thread_items?.length ? <ThreadContext items={o.thread_items} currentId={o.id} /> : null}
 
-      <section className="card panel section">
-        <div className="section-head"><div><div className="eyebrow">Audit trail</div><h2>Activity</h2></div></div>
-        <div className="timeline">
-          {o.activity?.length ? o.activity.map((item) => (
-            <div className="timeline-item" key={item.id}>
-              <div className="timeline-dot" />
-              <div>
-                <div className="timeline-head"><strong>{item.label}</strong><span>{relativeTime(item.created_at)}</span></div>
-                {item.detail ? <div className="small muted timeline-detail">{item.detail}</div> : null}
-              </div>
+          <section className="card panel section">
+            <div className="section-head"><div><div className="eyebrow">Audit trail</div><h2>Activity</h2></div></div>
+            <div className="timeline">
+              {o.activity?.length ? o.activity.map((item) => (
+                <div className="timeline-item" key={item.id}>
+                  <div className="timeline-dot" />
+                  <div>
+                    <div className="timeline-head"><strong>{item.label}</strong><span>{relativeTime(item.created_at)}</span></div>
+                    {item.detail ? <div className="small muted timeline-detail">{item.detail}</div> : null}
+                  </div>
+                </div>
+              )) : <div className="muted">No activity recorded yet.</div>}
             </div>
-          )) : <div className="muted">No activity recorded yet.</div>}
-        </div>
-      </section>
+          </section>
+        </aside>
+      </div>
     </AppShell>
   );
 }
