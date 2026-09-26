@@ -81,7 +81,9 @@ export type ThreadItem = {
 export type AutomationStatus = {
   syftenConnected: boolean;
   openAIConnected: boolean;
+  youtubeConnected: boolean;
   lastSyftenCheck: string | null;
+  lastYouTubeCheck: string | null;
   lastPipelineRun: string | null;
   lastSyftenCursor: string | null;
   newToday: number;
