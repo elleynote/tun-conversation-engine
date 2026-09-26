@@ -87,6 +87,11 @@ h3 { margin: 0; font-size: 15px; }
 .text-button:hover { text-decoration: underline; }
 
 .columns { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .85fr); gap: 18px; }
+.review-layout { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr); gap: 18px; align-items: start; }
+.review-main, .review-details { display: grid; gap: 18px; align-content: start; }
+.review-details > .section { margin-top: 0; }
+.review-details .thread-item { grid-template-columns: 34px minmax(0, 1fr); }
+.review-details .thread-meta-row { align-items: flex-start; flex-direction: column; gap: 4px; }
 .panel { padding: 19px; }
 .field { display: grid; gap: 6px; margin-bottom: 15px; }
 .label { color: var(--muted); font-size: 12px; font-weight: 700; }
@@ -149,6 +154,7 @@ th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spa
   .content { padding: 20px; }
   .grid-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .columns { grid-template-columns: 1fr; }
+  .review-layout { grid-template-columns: 1fr; }
   .automation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 560px) {
