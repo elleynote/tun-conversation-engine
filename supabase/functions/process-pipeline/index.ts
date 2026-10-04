@@ -45,6 +45,10 @@ Deno.serve(async (req: Request) => {
       ? Math.min(50, Math.max(1, Math.floor(requestedLimit)))
       : 10;
     const shouldIngest = body?.ingest !== false;
+    const forceYouTube = body?.force_youtube === true;
+    const youtubeMaxResults = Number.isFinite(Number(body?.youtube_max_results))
+      ? Math.min(100, Math.max(1, Math.floor(Number(body.youtube_max_results))))
+      : undefined;
 
     const ingestion: Record<string, unknown> = {};
     if (shouldIngest) {
@@ -53,7 +57,10 @@ Deno.serve(async (req: Request) => {
       // Failures are isolated so an unavailable source does not prevent the
       // existing queue from being processed.
       ingestion.syften = await safeInvoke("ingest-syften", {});
-      ingestion.youtube = await safeInvoke("ingest-youtube-comments", {});
+      ingestion.youtube = await safeInvoke("ingest-youtube-comments", {
+        force: forceYouTube,
+        ...(youtubeMaxResults ? { max_results: youtubeMaxResults } : {}),
+      });
     }
 
     const supabase = adminClient();
