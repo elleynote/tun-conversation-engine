@@ -49,6 +49,41 @@ Deno.serve(async (req: Request) => {
     const youtubeMaxResults = Number.isFinite(Number(body?.youtube_max_results))
       ? Math.min(100, Math.max(1, Math.floor(Number(body.youtube_max_results))))
       : undefined;
+    const configureSchedule = body?.configure_schedule === true;
+    const requestedSchedule =
+      typeof body?.schedule === "string" && body.schedule.trim()
+        ? body.schedule.trim()
+        : "*/5 * * * *";
+
+    const supabase = adminClient();
+
+    if (configureSchedule) {
+      const cronSecret = Deno.env.get("CRON_SECRET");
+      if (!cronSecret) return json({ error: "CRON_SECRET missing" }, 500);
+
+      const { data: scheduleResult, error: scheduleError } = await supabase.rpc(
+        "configure_tun_pipeline_cron",
+        {
+          p_cron_secret: cronSecret,
+          p_schedule: requestedSchedule,
+        },
+      );
+      if (scheduleError) throw scheduleError;
+
+      await supabase.from("settings").upsert(
+        {
+          key: "pipeline_schedule",
+          value: {
+            configured_at: new Date().toISOString(),
+            schedule: requestedSchedule,
+            job: scheduleResult,
+          },
+        },
+        { onConflict: "key" },
+      );
+
+      return json({ ok: true, schedule: scheduleResult });
+    }
 
     const ingestion: Record<string, unknown> = {};
     if (shouldIngest) {
@@ -63,7 +98,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const supabase = adminClient();
     const { data: fresh, error } = await supabase
       .from("opportunities")
       .select("id,status")
@@ -98,12 +132,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    const ingestionFailures = Object.entries(ingestion)
+      .filter(([, value]) => value && typeof value === "object" && (value as Record<string, unknown>).ok === false)
+      .map(([source]) => source);
+
     const run = {
       at: new Date().toISOString(),
       queue_limit: limit,
       opportunities_considered: (fresh ?? []).length,
       processed_count: results.length,
       failures,
+      ingestion_failures: ingestionFailures,
       ingestion,
     };
 
@@ -113,8 +152,9 @@ Deno.serve(async (req: Request) => {
     );
 
     return json({
-      ok: failures === 0,
+      ok: failures === 0 && ingestionFailures.length === 0,
       ingestion,
+      ingestion_failures: ingestionFailures,
       opportunities_considered: (fresh ?? []).length,
       failures,
       processed: results,
