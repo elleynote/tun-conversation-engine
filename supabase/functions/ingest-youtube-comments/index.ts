@@ -97,6 +97,7 @@ Deno.serve(async (req: Request) => {
 
     let discoveries: YouTubeSourceRow[] = [];
     let videosConsidered = 0;
+    let videosSkippedRecent = 0;
 
     if (requestedSourceId) {
       const { data, error } = await supabase
@@ -129,12 +130,13 @@ Deno.serve(async (req: Request) => {
 
       const candidates = (data ?? []) as YouTubeSourceRow[];
       videosConsidered = candidates.length;
-      discoveries = candidates
-        .filter((discovery) => force || shouldRefresh(discovery, refreshMinutes))
-        .slice(0, 20);
+      const eligible = candidates.filter((discovery) => force || shouldRefresh(discovery, refreshMinutes));
+      videosSkippedRecent = candidates.length - eligible.length;
+      discoveries = eligible.slice(0, 20);
     }
 
     let videosChecked = 0;
+    let videosMissingId = 0;
     let commentsFetched = 0;
     let inserted = 0;
     let duplicates = 0;
@@ -145,7 +147,10 @@ Deno.serve(async (req: Request) => {
         (typeof discovery.source_analysis?.youtube_video_id === "string" && discovery.source_analysis.youtube_video_id)
         || youtubeVideoId(discovery.original_url);
 
-      if (!videoId) continue;
+      if (!videoId) {
+        videosMissingId++;
+        continue;
+      }
       videosChecked++;
 
       try {
@@ -252,6 +257,8 @@ Deno.serve(async (req: Request) => {
       ok: errors.length === 0,
       videos_considered: videosConsidered,
       videos_checked: videosChecked,
+      videos_skipped_recent: videosSkippedRecent,
+      videos_missing_id: videosMissingId,
       comments_fetched: commentsFetched,
       inserted,
       duplicates,
