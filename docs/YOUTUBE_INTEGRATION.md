@@ -85,3 +85,42 @@ approve -> copy/open YouTube -> post -> mark as posted
 ```
 
 A future posting adapter should use Google OAuth for the actual Tun YouTube channel account.
+
+
+## Production scheduler
+
+Migration `016_automate_pipeline_cron.sql` adds a secure one-time scheduler setup RPC.
+
+After the migration and updated `process-pipeline` function are deployed, call `process-pipeline` once with:
+
+```json
+{
+  "configure_schedule": true,
+  "schedule": "*/5 * * * *"
+}
+```
+
+The Edge Function passes its existing `CRON_SECRET` to the service-role-only RPC. The RPC stores the secret and project URL encrypted in Supabase Vault, then creates/updates the `tun-conversation-pipeline` Supabase Cron job.
+
+The scheduled job runs every five minutes and calls `process-pipeline` with:
+
+```json
+{
+  "limit": 5,
+  "ingest": true
+}
+```
+
+This keeps the production path automatic:
+
+```
+Supabase Cron
+-> process-pipeline
+-> Syften ingestion
+-> YouTube comment ingestion
+-> AI classification
+-> draft generation
+-> dashboard review
+```
+
+The Cron request uses Vault at runtime; no cron secret is hardcoded in the migration or source control.
