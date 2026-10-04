@@ -1,53 +1,87 @@
 # YouTube Integration
 
-The YouTube foundation is designed to reuse the existing Conversation Engine workflow.
+The YouTube integration reuses the existing Tun Conversation Engine workflow and is now wired into the main pipeline.
 
-## Flow
+## Production flow
 
-1. Syften discovers a relevant YouTube video.
-2. `ingest-syften` stores the video as a hidden source record with `suppression_reason = youtube_video_source`.
-3. `ingest-youtube-comments` extracts the video ID and requests the newest top-level public comments from the YouTube Data API v3.
-4. Each YouTube comment is stored as a normal `opportunities` row with `platform = youtube`.
-5. The existing AI classifier, product routing, drafting, review, dismiss/next and audit flow processes the comment.
-6. Posting is manual for the first release: approve -> copy/open YouTube -> post -> mark as posted.
+1. `process-pipeline` calls `ingest-syften`.
+2. Syften discovers relevant Reddit conversations and YouTube videos.
+3. YouTube video discoveries are stored as hidden source records with `suppression_reason = youtube_video_source`.
+4. `process-pipeline` calls `ingest-youtube-comments`.
+5. `ingest-youtube-comments` uses YouTube Data API v3 to fetch the newest public top-level comments for eligible discovered videos.
+6. New YouTube comments are stored as normal `opportunities` rows with `platform = youtube`.
+7. The same pipeline classifies new Reddit and YouTube opportunities, routes the appropriate Tun product(s), and generates drafts for qualified opportunities.
+8. A human reviews the draft in the dashboard.
+9. YouTube posting remains manual in this release. OAuth posting can be added later with the client's YouTube channel authorization.
 
-## Required secret
-
-Set in Supabase Edge Function secrets when available:
+## Required Supabase Edge Function secrets
 
 ```
 YOUTUBE_API_KEY=
 YOUTUBE_COMMENTS_MAX_RESULTS=100
+YOUTUBE_REFRESH_MINUTES=15
 ```
 
-The API key is read only by the Edge Function. Do not expose it through a NEXT_PUBLIC variable.
+`YOUTUBE_API_KEY` is read only by Supabase Edge Functions. Never expose it through a `NEXT_PUBLIC_*` variable or Netlify client-side environment variable.
+
+`YOUTUBE_REFRESH_MINUTES` prevents every pipeline run from repeatedly requesting the same videos. Explicit manual requests using `video_id` or `source_opportunity_id` still run immediately.
 
 ## Deployment
 
-After the API key is available:
+After pulling the latest `main` branch:
 
 ```powershell
-supabase secrets set YOUTUBE_API_KEY=YOUR_KEY
-supabase secrets set YOUTUBE_COMMENTS_MAX_RESULTS=100
-supabase db push
 supabase functions deploy ingest-syften
 supabase functions deploy ingest-youtube-comments
+supabase functions deploy process-pipeline
 supabase functions deploy classify-opportunity
 supabase functions deploy generate-draft
 ```
 
-## First test
+No database migration is required for this pipeline update.
 
-Once Syften has produced a YouTube video match, invoke the YouTube comment ingestion function for that source/video. The function also supports a direct `video_id` in its request body for testing.
+## Running the pipeline
 
-Expected result:
+A normal call to `process-pipeline` now performs discovery and processing in one run:
 
-- hidden Syften YouTube video discovery record
-- one opportunity per top-level YouTube comment
-- YouTube author/avatar shown in the dashboard
-- classification and product routing run through the existing pipeline
-- platform-aware review controls say YouTube rather than Reddit
+```
+Syften ingestion
+-> YouTube comment ingestion
+-> classify new opportunities
+-> generate drafts for qualified opportunities
+```
+
+The pipeline isolates source failures. For example, if Syften is temporarily unavailable, existing queued opportunities can still be classified and drafted.
+
+The request body may optionally contain:
+
+```json
+{
+  "limit": 10,
+  "ingest": true
+}
+```
+
+- `limit` controls how many queued opportunities are processed in one run (1-50).
+- `ingest: false` skips Syften/YouTube ingestion and processes only the existing queue.
+
+If `CRON_SECRET` is configured, the outer request must include the existing `x-cron-secret` header. Internal pipeline calls forward that secret automatically.
+
+## YouTube ingestion behavior
+
+- Public top-level comments are fetched with YouTube Data API v3.
+- Existing comments are detected by the database uniqueness constraint and counted as duplicates instead of being reset to `new`.
+- A default run checks up to 20 eligible recent YouTube video discoveries.
+- Each discovery is refreshed only after `YOUTUBE_REFRESH_MINUTES` unless an explicit manual/forced request is made.
+- `youtube_last_run` records whether the API call succeeded, videos checked, comments fetched, new comments inserted, duplicate comments, and any errors.
+- The dashboard reports YouTube as connected only after a successful ingestion run.
 
 ## Posting
 
-Direct posting is intentionally not implemented yet. The current flow is manual. A future OAuth-based posting adapter can use the approved YouTube channel account after the client provides Google authorization.
+Direct YouTube posting is intentionally not implemented yet. The current workflow is:
+
+```
+approve -> copy/open YouTube -> post -> mark as posted
+```
+
+A future posting adapter should use Google OAuth for the actual Tun YouTube channel account.
