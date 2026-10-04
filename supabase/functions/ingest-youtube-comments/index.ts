@@ -10,6 +10,12 @@ type YouTubeSourceRow = {
   source_analysis: Record<string, unknown> | null;
 };
 
+type IngestionError = {
+  video_id: string;
+  comment_id?: string;
+  error: string;
+};
+
 function youtubeVideoId(url?: string | null) {
   if (!url) return null;
   try {
@@ -30,6 +36,15 @@ function youtubeVideoId(url?: string | null) {
 
 function commentUrl(videoId: string, commentId: string) {
   return `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}&lc=${encodeURIComponent(commentId)}`;
+}
+
+function shouldRefresh(discovery: YouTubeSourceRow, refreshMinutes: number) {
+  if (refreshMinutes <= 0) return true;
+  const lastFetched = discovery.source_analysis?.youtube_comments_last_fetched_at;
+  if (typeof lastFetched !== "string" || !lastFetched) return true;
+  const timestamp = Date.parse(lastFetched);
+  if (!Number.isFinite(timestamp)) return true;
+  return Date.now() - timestamp >= refreshMinutes * 60_000;
 }
 
 async function fetchTopLevelComments(apiKey: string, videoId: string, maxResults: number) {
@@ -61,8 +76,18 @@ Deno.serve(async (req: Request) => {
     const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
     const requestedVideoId = typeof body?.video_id === "string" ? body.video_id.trim() : "";
     const requestedSourceId = typeof body?.source_opportunity_id === "string" ? body.source_opportunity_id.trim() : "";
+    const force = body?.force === true;
+
     const configuredMax = Number(Deno.env.get("YOUTUBE_COMMENTS_MAX_RESULTS") || "100");
-    const maxResults = Math.min(100, Math.max(1, Number(body?.max_results || configuredMax || 100)));
+    const requestedMax = Number(body?.max_results || configuredMax || 100);
+    const maxResults = Number.isFinite(requestedMax)
+      ? Math.min(100, Math.max(1, Math.floor(requestedMax)))
+      : 100;
+
+    const configuredRefresh = Number(Deno.env.get("YOUTUBE_REFRESH_MINUTES") || "15");
+    const refreshMinutes = Number.isFinite(configuredRefresh)
+      ? Math.max(0, configuredRefresh)
+      : 15;
 
     const { data: youtubeSource, error: sourceError } = await supabase.from("sources").upsert(
       { key: "youtube_api", name: "YouTube Data API", source_type: "monitoring", enabled: true },
@@ -71,6 +96,7 @@ Deno.serve(async (req: Request) => {
     if (sourceError) throw sourceError;
 
     let discoveries: YouTubeSourceRow[] = [];
+    let videosConsidered = 0;
 
     if (requestedSourceId) {
       const { data, error } = await supabase
@@ -80,6 +106,7 @@ Deno.serve(async (req: Request) => {
         .single();
       if (error) throw error;
       discoveries = data ? [data as YouTubeSourceRow] : [];
+      videosConsidered = discoveries.length;
     } else if (requestedVideoId) {
       discoveries = [{
         id: "manual",
@@ -89,6 +116,7 @@ Deno.serve(async (req: Request) => {
         original_url: `https://www.youtube.com/watch?v=${requestedVideoId}`,
         source_analysis: { youtube_video_id: requestedVideoId },
       }];
+      videosConsidered = 1;
     } else {
       const { data, error } = await supabase
         .from("opportunities")
@@ -96,15 +124,21 @@ Deno.serve(async (req: Request) => {
         .eq("platform", "youtube")
         .eq("suppression_reason", "youtube_video_source")
         .order("detected_at", { ascending: false })
-        .limit(20);
+        .limit(50);
       if (error) throw error;
-      discoveries = (data ?? []) as YouTubeSourceRow[];
+
+      const candidates = (data ?? []) as YouTubeSourceRow[];
+      videosConsidered = candidates.length;
+      discoveries = candidates
+        .filter((discovery) => force || shouldRefresh(discovery, refreshMinutes))
+        .slice(0, 20);
     }
 
     let videosChecked = 0;
     let commentsFetched = 0;
     let inserted = 0;
-    const errors: Array<{ video_id: string; error: string }> = [];
+    let duplicates = 0;
+    const errors: IngestionError[] = [];
 
     for (const discovery of discoveries) {
       const videoId =
@@ -117,6 +151,8 @@ Deno.serve(async (req: Request) => {
       try {
         const items = await fetchTopLevelComments(apiKey, videoId, maxResults);
         commentsFetched += items.length;
+        let videoInserted = 0;
+        let videoDuplicates = 0;
 
         for (const thread of items) {
           const top = thread?.snippet?.topLevelComment;
@@ -129,7 +165,7 @@ Deno.serve(async (req: Request) => {
           const avatar = snippet?.authorProfileImageUrl || null;
           const externalId = `youtube-comment:${commentId}`;
 
-          const { error } = await supabase.from("opportunities").upsert({
+          const { error } = await supabase.from("opportunities").insert({
             source_id: youtubeSource.id,
             external_id: externalId,
             platform: "youtube",
@@ -166,9 +202,25 @@ Deno.serve(async (req: Request) => {
             thread_key: `youtube:${videoId}:${commentId}`,
             is_thread_root: true,
             suppression_reason: null,
-          }, { onConflict: "source_id,external_id", ignoreDuplicates: true });
+          });
 
-          if (!error) inserted++;
+          if (!error) {
+            inserted++;
+            videoInserted++;
+            continue;
+          }
+
+          if (error.code === "23505") {
+            duplicates++;
+            videoDuplicates++;
+            continue;
+          }
+
+          errors.push({
+            video_id: videoId,
+            comment_id: commentId,
+            error: error.message || String(error),
+          });
         }
 
         if (discovery.id !== "manual") {
@@ -178,6 +230,11 @@ Deno.serve(async (req: Request) => {
               youtube_video_id: videoId,
               youtube_discovery: true,
               youtube_comments_last_fetched_at: new Date().toISOString(),
+              youtube_comments_last_result: {
+                fetched: items.length,
+                inserted: videoInserted,
+                duplicates: videoDuplicates,
+              },
             },
             updated_at: new Date().toISOString(),
           }).eq("id", discovery.id);
@@ -190,24 +247,24 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    await supabase.from("settings").upsert({
-      key: "youtube_last_run",
-      value: {
-        at: new Date().toISOString(),
-        videos_checked: videosChecked,
-        comments_fetched: commentsFetched,
-        inserted,
-        errors,
-      },
-    }, { onConflict: "key" });
-
-    return json({
+    const run = {
+      at: new Date().toISOString(),
       ok: errors.length === 0,
+      videos_considered: videosConsidered,
       videos_checked: videosChecked,
       comments_fetched: commentsFetched,
       inserted,
+      duplicates,
+      refresh_minutes: refreshMinutes,
       errors,
-    });
+    };
+
+    await supabase.from("settings").upsert(
+      { key: "youtube_last_run", value: run },
+      { onConflict: "key" },
+    );
+
+    return json(run);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
