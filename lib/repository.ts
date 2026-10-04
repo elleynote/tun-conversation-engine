@@ -211,7 +211,7 @@ export async function getAutomationStatus(): Promise<AutomationStatus> {
   return {
     syftenConnected: Boolean(syftenRun?.at || cursor?.matched_on || hasSyften()),
     openAIConnected: Boolean(pipelineRun?.at || hasOpenAI()),
-    youtubeConnected: Boolean(youtubeRun?.at),
+    youtubeConnected: Boolean(youtubeRun?.at && youtubeRun?.ok !== false && (!Array.isArray(youtubeRun?.errors) || youtubeRun.errors.length === 0)),
     lastSyftenCheck: syftenRun?.at ?? null,
     lastYouTubeCheck: youtubeRun?.at ?? null,
     lastPipelineRun: pipelineRun?.at ?? null,
