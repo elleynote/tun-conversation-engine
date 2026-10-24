@@ -25,37 +25,55 @@
         return;
       }
 
-      chrome.runtime.sendMessage(
-        {
-          action: "START_POSTING",
-          opportunityId,
-          url,
-          text
-        },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            window.postMessage({
-              type: "TUN_POST_RESULT",
-              opportunityId,
-              success: false,
-              error: chrome.runtime.lastError.message
-            }, "*");
-          }
+      // Check if extension context is valid
+      try {
+        if (!chrome.runtime || !chrome.runtime.id) {
+          throw new Error("Extension was reloaded. Please refresh this dashboard tab (press F5).");
         }
-      );
+
+        chrome.runtime.sendMessage(
+          {
+            action: "START_POSTING",
+            opportunityId,
+            url,
+            text
+          },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              window.postMessage({
+                type: "TUN_POST_RESULT",
+                opportunityId,
+                success: false,
+                error: chrome.runtime.lastError.message
+              }, "*");
+            }
+          }
+        );
+      } catch (err) {
+        window.postMessage({
+          type: "TUN_POST_RESULT",
+          opportunityId,
+          success: false,
+          error: "Extension context refreshed. Please reload this dashboard page (press F5) and try again."
+        }, "*");
+      }
     }
   });
 
   // Listen for updates from background.js (completion or errors) and forward to dashboard
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message && message.action === "POST_COMPLETED") {
-      window.postMessage({
-        type: "TUN_POST_RESULT",
-        opportunityId: message.opportunityId,
-        success: message.success,
-        commentUrl: message.commentUrl,
-        error: message.error
-      }, "*");
+  try {
+    if (chrome.runtime && chrome.runtime.onMessage) {
+      chrome.runtime.onMessage.addListener((message) => {
+        if (message && message.action === "POST_COMPLETED") {
+          window.postMessage({
+            type: "TUN_POST_RESULT",
+            opportunityId: message.opportunityId,
+            success: message.success,
+            commentUrl: message.commentUrl,
+            error: message.error
+          }, "*");
+        }
+      });
     }
-  });
+  } catch (e) {}
 })();
