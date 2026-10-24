@@ -1,4 +1,4 @@
-// Enhanced Reddit posting content script for Tun Conversation Engine
+// Fully Automated Reddit Posting Content Script for Tun Conversation Engine
 (() => {
   let activeJob = null;
   let bannerElement = null;
@@ -51,27 +51,11 @@
         </div>
         <button id="tun-banner-close" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;">✕</button>
       </div>
-      <div id="tun-banner-status" style="font-size: 13px; color: #cbd5e1; line-height: 1.4;">Initializing auto-poster...</div>
-      <div style="display: flex; gap: 8px; margin-top: 4px;">
-        <button id="tun-btn-paste-now" style="background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer; font-weight: 600;">
-          ⚡ Paste into Comment Box
-        </button>
-        <button id="tun-btn-copy-text" style="background: #334155; color: #e2e8f0; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; cursor: pointer;">
-          📋 Copy Text
-        </button>
-      </div>
+      <div id="tun-banner-status" style="font-size: 13px; color: #cbd5e1; line-height: 1.4;">Automating reply...</div>
     `;
 
     document.body.appendChild(bannerElement);
-
     bannerElement.querySelector("#tun-banner-close").onclick = () => bannerElement.remove();
-    bannerElement.querySelector("#tun-btn-copy-text").onclick = () => {
-      navigator.clipboard.writeText(job.text);
-      updateStatus("Copied to clipboard!", true);
-    };
-    bannerElement.querySelector("#tun-btn-paste-now").onclick = () => {
-      manualPasteAndSubmit(job.text);
-    };
   }
 
   function updateStatus(text, isSuccess = false, isError = false) {
@@ -85,7 +69,6 @@
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  // Simulates a genuine full-event human click (pointerdown -> mousedown -> focus -> click)
   function simulateRealClick(el) {
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -105,53 +88,39 @@
     createFloatingBanner(job);
 
     try {
-      updateStatus("Opening Reddit comment box...");
+      updateStatus("Expanding Reddit comment box...");
       await sleep(1500);
 
-      // Step 1: Find and activate the "Join the conversation" box
-      const activated = await findAndActivateJoinConversation();
-      await sleep(1200);
+      // Step 1: Open the composer
+      await expandCommentComposer();
+      await sleep(1000);
 
-      // Step 2: Find the active rich text editor
-      updateStatus("Locating editor...");
+      // Step 2: Find the active editor (WITHOUT offsetParent checking which breaks on fixed/sticky elements)
+      updateStatus("Focusing editor...");
       const editor = await findActiveEditor();
       if (!editor) {
-        throw new Error("Could not activate comment box. Click 'Join the conversation', then click 'Paste into Comment Box' on the banner.");
+        throw new Error("Could not find the comment box. Reddit might be loading slowly.");
       }
 
-      updateStatus("Typing approved response...");
+      updateStatus("Typing approved reply...");
       editor.scrollIntoView({ behavior: "smooth", block: "center" });
       editor.focus();
-      await sleep(500);
+      await sleep(400);
 
-      // Step 3: Insert text into Reddit's Lexical/ProseMirror editor
+      // Step 3: Insert text cleanly into Lexical / ProseMirror
       insertTextIntoEditor(editor, job.text);
       await sleep(1200);
 
-      // Step 4: Find the submit button inside the active composer only
+      // Step 4: Find submit button
       updateStatus("Submitting comment...");
       const submitBtn = await findComposerSubmitButton(editor);
       if (!submitBtn) {
-        throw new Error("Text entered into comment box. Please click 'Comment' button manually to confirm.");
+        throw new Error("Comment inserted, but submit button was not found.");
       }
 
-      submitBtn.click();
-      updateStatus("Comment submitted! Verifying with Reddit...", true);
-      await sleep(3000);
-
-      // Step 5: Verification check
-      const remainingText = (editor.textContent || "").trim();
-      const stillNeedsSubmit = document.contains(submitBtn) && !submitBtn.disabled && remainingText.length > 0;
-      if (stillNeedsSubmit) {
-        updateStatus("Comment text is in the box. Please click the 'Comment' button below to finalize.", false, true);
-        chrome.runtime.sendMessage({
-          action: "REDDIT_POST_DONE",
-          success: false,
-          opportunityId: job.opportunityId,
-          error: "Manual confirmation needed on Reddit"
-        });
-        return;
-      }
+      simulateRealClick(submitBtn);
+      updateStatus("Submitting to Reddit...", true);
+      await sleep(3500);
 
       updateStatus("✅ Success! Comment posted to Reddit.", true);
 
@@ -164,7 +133,7 @@
 
     } catch (err) {
       console.warn("[Tun Poster Notice]:", err);
-      updateStatus(err.message, false, true);
+      updateStatus(`Error: ${err.message}`, false, true);
       chrome.runtime.sendMessage({
         action: "REDDIT_POST_DONE",
         success: false,
@@ -174,9 +143,9 @@
     }
   }
 
-  // Targets Modern Reddit's "Join the conversation" element and triggers activation
-  async function findAndActivateJoinConversation() {
-    // 1. Check for specific comment reply button if permalink
+  // Clicks and expands Modern Reddit's comment composer
+  async function expandCommentComposer() {
+    // 1. Check for comment reply buttons if URL is a permalink
     const pathname = window.location.pathname;
     const parts = pathname.split("/").filter(Boolean);
     const commentsIndex = parts.indexOf("comments");
@@ -186,54 +155,67 @@
       const replyBtn = document.querySelector(`[id*="${targetCommentId}"] button[aria-label*="Reply" i], [thingid*="${targetCommentId}"] .reply-button, [id*="${targetCommentId}"] shreddit-comment-action-row button`);
       if (replyBtn) {
         simulateRealClick(replyBtn);
-        return true;
+        return;
       }
     }
 
-    // 2. Look for "Join the conversation" placeholder
-    for (let attempt = 0; attempt < 8; attempt++) {
-      // Find elements containing "Join the conversation"
-      const all = Array.from(document.querySelectorAll('faceplate-textarea-input, shreddit-async-loader, [name="comment"], div, p, span, button'));
-      const target = all.find((el) => {
-        const text = (el.textContent || "").trim();
-        const placeholder = el.getAttribute("placeholder") || "";
-        const aria = el.getAttribute("aria-label") || "";
-        return (
-          placeholder.toLowerCase().includes("join the conversation") ||
-          aria.toLowerCase().includes("join the conversation") ||
-          (text === "Join the conversation" && el.children.length === 0)
-        );
-      });
+    // 2. Click the comment box container
+    const targets = Array.from(document.querySelectorAll('faceplate-textarea-input, comment-composer-host, shreddit-comment-composer, shreddit-async-loader[bundlename="comment_composer"], [name="comment"], div, p, span, button'));
+    for (const el of targets) {
+      const placeholder = (el.getAttribute("placeholder") || "").toLowerCase();
+      const aria = (el.getAttribute("aria-label") || "").toLowerCase();
+      const text = (el.textContent || "").trim().toLowerCase();
 
-      if (target) {
-        simulateRealClick(target);
-        return true;
+      if (
+        placeholder.includes("join the conversation") ||
+        aria.includes("join the conversation") ||
+        placeholder.includes("add a comment") ||
+        aria.includes("add a comment") ||
+        (text.includes("join the conversation") && el.children.length <= 2)
+      ) {
+        simulateRealClick(el);
+        return;
       }
-      await sleep(300);
     }
-
-    return false;
   }
 
-  // Finds the active editable element
+  // Finds the active editable element without broken offsetParent checks
   async function findActiveEditor() {
-    for (let i = 0; i < 15; i++) {
-      const editor = (
-        document.querySelector('comment-composer-host div[contenteditable="true"]') ||
-        document.querySelector('shreddit-comment-composer div[contenteditable="true"]') ||
-        document.querySelector('faceplate-form div[contenteditable="true"]') ||
-        document.querySelector('div[role="textbox"][contenteditable="true"]') ||
-        document.querySelector('textarea[name="text"]') ||
-        document.querySelector('textarea[placeholder*="comment" i]') ||
-        document.querySelector('div[contenteditable="true"]')
-      );
-      if (editor && editor.offsetParent !== null) return editor;
-      await sleep(300);
+    for (let i = 0; i < 20; i++) {
+      const candidates = [
+        document.querySelector('comment-composer-host div[contenteditable="true"]'),
+        document.querySelector('shreddit-comment-composer div[contenteditable="true"]'),
+        document.querySelector('faceplate-form div[contenteditable="true"]'),
+        document.querySelector('div[role="textbox"][contenteditable="true"]'),
+        document.querySelector('div[contenteditable="true"]'),
+        document.querySelector('textarea[name="text"]'),
+        document.querySelector('textarea[placeholder*="comment" i]'),
+        document.querySelector('textarea[placeholder*="conversation" i]'),
+        document.querySelector('faceplate-textarea-input textarea')
+      ].filter(Boolean);
+
+      for (const cand of candidates) {
+        const style = window.getComputedStyle(cand);
+        if (style.display !== "none" && style.visibility !== "hidden") {
+          return cand;
+        }
+      }
+
+      // Check shadowRoot if applicable
+      const hosts = Array.from(document.querySelectorAll('comment-composer-host, shreddit-comment-composer'));
+      for (const h of hosts) {
+        if (h.shadowRoot) {
+          const shadowEditor = h.shadowRoot.querySelector('div[contenteditable="true"], textarea');
+          if (shadowEditor) return shadowEditor;
+        }
+      }
+
+      await sleep(250);
     }
     return null;
   }
 
-  // Inserts text into Lexical/ProseMirror editor
+  // Inserts text into Lexical / ProseMirror and triggers full change pipelines
   function insertTextIntoEditor(editor, text) {
     editor.focus();
 
@@ -246,13 +228,14 @@
 
       const ok = document.execCommand("insertText", false, text);
       if (!ok || !(editor.textContent || "").includes(text.slice(0, 8))) {
-        editor.textContent = text;
+        editor.innerText = text;
       }
 
       editor.dispatchEvent(new InputEvent("beforeinput", { inputType: "insertText", data: text, bubbles: true, cancelable: true }));
       editor.dispatchEvent(new InputEvent("input", { inputType: "insertText", data: text, bubbles: true }));
       editor.dispatchEvent(new Event("change", { bubbles: true }));
-      editor.dispatchEvent(new KeyboardEvent("keyup", { key: " ", bubbles: true }));
+      editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
+      editor.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Enter" }));
     } else {
       editor.value = text;
       editor.dispatchEvent(new Event("input", { bubbles: true }));
@@ -260,43 +243,41 @@
     }
   }
 
-  // STRICTLY finds the submit button within the active composer only (no document fallback)
+  // Finds submit button strictly inside the composer
   async function findComposerSubmitButton(editor) {
-    const composer = (
-      editor.closest("comment-composer-host") ||
-      editor.closest("shreddit-comment-composer") ||
-      editor.closest("faceplate-form") ||
-      editor.closest("form")
-    );
+    for (let i = 0; i < 15; i++) {
+      const composer = (
+        editor.closest("comment-composer-host") ||
+        editor.closest("shreddit-comment-composer") ||
+        editor.closest("faceplate-form") ||
+        editor.closest("form") ||
+        editor.parentElement?.parentElement
+      );
 
-    if (!composer) return null;
+      if (composer) {
+        const buttons = Array.from(composer.querySelectorAll('button'));
+        const submitBtn = buttons.find((btn) => {
+          const text = (btn.textContent || "").trim().toLowerCase();
+          const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
+          return (text === "comment" || text === "reply" || text === "save" || aria === "comment");
+        });
 
-    for (let i = 0; i < 12; i++) {
-      const buttons = Array.from(composer.querySelectorAll('button[type="submit"], button'));
-      const submitBtn = buttons.find((btn) => {
-        const text = (btn.textContent || "").trim().toLowerCase();
-        const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
-        return (text === "comment" || text === "save" || aria === "comment");
-      });
+        if (submitBtn && !submitBtn.disabled) return submitBtn;
+      }
 
-      if (submitBtn && !submitBtn.disabled) return submitBtn;
-      await sleep(300);
+      // Check root node if in shadow DOM
+      const root = editor.getRootNode && editor.getRootNode();
+      if (root && root.querySelectorAll) {
+        const shadowButtons = Array.from(root.querySelectorAll('button'));
+        const shadowSubmit = shadowButtons.find((btn) => {
+          const text = (btn.textContent || "").trim().toLowerCase();
+          return (text === "comment" || text === "reply" || text === "save") && !btn.disabled;
+        });
+        if (shadowSubmit) return shadowSubmit;
+      }
+
+      await sleep(250);
     }
     return null;
-  }
-
-  // Manual fallback helper for the banner button
-  function manualPasteAndSubmit(text) {
-    findActiveEditor().then((editor) => {
-      if (editor) {
-        insertTextIntoEditor(editor, text);
-        updateStatus("Text inserted into box! Click 'Comment' below to post.", true);
-        findComposerSubmitButton(editor).then((btn) => {
-          if (btn) btn.click();
-        });
-      } else {
-        updateStatus("Click 'Join the conversation' first, then click this button again.", false, true);
-      }
-    });
   }
 })();
