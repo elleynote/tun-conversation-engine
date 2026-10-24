@@ -14,6 +14,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Watch for tab loading completion and trigger execution directly
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === "complete") {
+    const { tunPendingJob: job } = await chrome.storage.local.get("tunPendingJob");
+    if (job && job.redditTabId === tabId) {
+      setTimeout(() => {
+        try {
+          chrome.tabs.sendMessage(tabId, { action: "EXECUTE_POST", job });
+        } catch (e) {
+          console.warn("Could not send EXECUTE_POST to Reddit tab:", e);
+        }
+      }, 1000);
+    }
+  }
+});
+
 async function handleStartPosting(data, dashboardTabId) {
   const job = {
     opportunityId: data.opportunityId,
@@ -26,7 +42,7 @@ async function handleStartPosting(data, dashboardTabId) {
   // Persist pending job in local storage
   await chrome.storage.local.set({ tunPendingJob: job });
 
-  // Open the Reddit conversation in a tab
+  // Open the Reddit conversation in a new tab
   chrome.tabs.create({ url: data.url, active: true }, (newTab) => {
     job.redditTabId = newTab.id;
     chrome.storage.local.set({ tunPendingJob: job });
@@ -55,19 +71,16 @@ async function handleRedditPostDone(result) {
     }
   }
 
-  // Focus back on the dashboard tab so the user can continue their workflow smoothly
-  if (job.dashboardTabId) {
-    try {
-      chrome.tabs.update(job.dashboardTabId, { active: true });
-    } catch (e) {}
-  }
-
-  // Close the Reddit tab after 3 seconds if successful, or leave open on error
-  if (result.success && job.redditTabId) {
+  // If successful, switch focus back to dashboard tab after a short delay
+  if (result.success && job.dashboardTabId) {
     setTimeout(() => {
       try {
-        chrome.tabs.remove(job.redditTabId);
+        chrome.tabs.update(job.dashboardTabId, { active: true });
+        if (job.redditTabId) {
+          chrome.tabs.remove(job.redditTabId);
+        }
       } catch (e) {}
-    }, 3000);
+    }, 4000);
   }
+  // If not successful, leave the Reddit tab open with the floating banner so the user can see/fix!
 }
