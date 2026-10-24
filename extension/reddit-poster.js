@@ -1,4 +1,4 @@
-// Fully Automated Reddit Posting Content Script for Tun Conversation Engine
+// High-Reliability Reddit Posting Content Script for Tun Conversation Engine
 (() => {
   let activeJob = null;
   let bannerElement = null;
@@ -87,50 +87,14 @@
     activeJob = job;
     createFloatingBanner(job);
 
+    const isOldReddit = window.location.hostname === "old.reddit.com";
+
     try {
-      updateStatus("Expanding Reddit comment box...");
-      await sleep(1500);
-
-      // Step 1: Open the composer
-      await expandCommentComposer();
-      await sleep(1000);
-
-      // Step 2: Find the active editor (WITHOUT offsetParent checking which breaks on fixed/sticky elements)
-      updateStatus("Focusing editor...");
-      const editor = await findActiveEditor();
-      if (!editor) {
-        throw new Error("Could not find the comment box. Reddit might be loading slowly.");
+      if (isOldReddit) {
+        await postOnOldReddit(job);
+      } else {
+        await postOnModernReddit(job);
       }
-
-      updateStatus("Typing approved reply...");
-      editor.scrollIntoView({ behavior: "smooth", block: "center" });
-      editor.focus();
-      await sleep(400);
-
-      // Step 3: Insert text cleanly into Lexical / ProseMirror
-      insertTextIntoEditor(editor, job.text);
-      await sleep(1200);
-
-      // Step 4: Find submit button
-      updateStatus("Submitting comment...");
-      const submitBtn = await findComposerSubmitButton(editor);
-      if (!submitBtn) {
-        throw new Error("Comment inserted, but submit button was not found.");
-      }
-
-      simulateRealClick(submitBtn);
-      updateStatus("Submitting to Reddit...", true);
-      await sleep(3500);
-
-      updateStatus("✅ Success! Comment posted to Reddit.", true);
-
-      chrome.runtime.sendMessage({
-        action: "REDDIT_POST_DONE",
-        success: true,
-        opportunityId: job.opportunityId,
-        commentUrl: window.location.href
-      });
-
     } catch (err) {
       console.warn("[Tun Poster Notice]:", err);
       updateStatus(`Error: ${err.message}`, false, true);
@@ -143,23 +107,95 @@
     }
   }
 
-  // Clicks and expands Modern Reddit's comment composer
-  async function expandCommentComposer() {
-    // 1. Check for comment reply buttons if URL is a permalink
+  // --- OLD REDDIT STRATEGY (Indestructible plain HTML form submission) ---
+  async function postOnOldReddit(job) {
+    updateStatus("Locating comment form...");
+    await sleep(800);
+
+    // Look for target comment if permalink
     const pathname = window.location.pathname;
     const parts = pathname.split("/").filter(Boolean);
     const commentsIndex = parts.indexOf("comments");
     const targetCommentId = (commentsIndex !== -1 && parts.length > commentsIndex + 3) ? parts[commentsIndex + 3] : null;
 
+    let targetForm = null;
     if (targetCommentId) {
-      const replyBtn = document.querySelector(`[id*="${targetCommentId}"] button[aria-label*="Reply" i], [thingid*="${targetCommentId}"] .reply-button, [id*="${targetCommentId}"] shreddit-comment-action-row button`);
-      if (replyBtn) {
-        simulateRealClick(replyBtn);
-        return;
+      const commentEl = document.querySelector(`[data-fullname*="${targetCommentId}"], div.thing.id-t1_${targetCommentId}, [id*="${targetCommentId}"]`);
+      if (commentEl) {
+        const replyBtn = commentEl.querySelector(".reply-button a, a.reply-button");
+        if (replyBtn) {
+          replyBtn.click();
+          await sleep(500);
+          targetForm = commentEl.querySelector("form.usertext");
+        }
       }
     }
 
-    // 2. Click the comment box container
+    if (!targetForm) {
+      targetForm = document.querySelector(".commentarea form.usertext, form[action*='comment']");
+    }
+
+    if (!targetForm) {
+      throw new Error("Could not find comment form on old.reddit.com");
+    }
+
+    const textarea = targetForm.querySelector("textarea[name='text']");
+    if (!textarea) {
+      throw new Error("Could not find textarea in comment form");
+    }
+
+    updateStatus("Entering approved reply...");
+    textarea.scrollIntoView({ behavior: "smooth", block: "center" });
+    textarea.focus();
+    textarea.value = job.text;
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    textarea.dispatchEvent(new Event("change", { bubbles: true }));
+    await sleep(600);
+
+    updateStatus("Submitting comment...");
+    const saveBtn = targetForm.querySelector("button.save, input[type='submit'], .btn");
+    if (!saveBtn) {
+      throw new Error("Could not find save button on comment form");
+    }
+
+    const commentCountBefore = document.querySelectorAll(".commentarea .sitetable .entry").length;
+    saveBtn.click();
+    updateStatus("Submitting to Reddit...", true);
+
+    // Strict verification: Wait up to 6 seconds for new comment to appear in the DOM
+    let verified = false;
+    for (let i = 0; i < 20; i++) {
+      await sleep(300);
+      const comments = Array.from(document.querySelectorAll(".commentarea .entry .usertext-body, .entry"));
+      const found = comments.some((c) => (c.textContent || "").includes(job.text.slice(0, 15)));
+      const countNow = document.querySelectorAll(".commentarea .sitetable .entry").length;
+      if (found || countNow > commentCountBefore) {
+        verified = true;
+        break;
+      }
+    }
+
+    if (!verified) {
+      throw new Error("Comment submit was triggered, but Reddit did not confirm insertion.");
+    }
+
+    updateStatus("✅ Success! Verified comment is live on Reddit.", true);
+    await sleep(1500);
+
+    chrome.runtime.sendMessage({
+      action: "REDDIT_POST_DONE",
+      success: true,
+      opportunityId: job.opportunityId,
+      commentUrl: window.location.href.replace("old.reddit.com", "www.reddit.com")
+    });
+  }
+
+  // --- MODERN REDDIT STRATEGY (Shreddit web components) ---
+  async function postOnModernReddit(job) {
+    updateStatus("Expanding Reddit comment box...");
+    await sleep(1200);
+
+    // Expand composer
     const targets = Array.from(document.querySelectorAll('faceplate-textarea-input, comment-composer-host, shreddit-comment-composer, shreddit-async-loader[bundlename="comment_composer"], [name="comment"], div, p, span, button'));
     for (const el of targets) {
       const placeholder = (el.getAttribute("placeholder") || "").toLowerCase();
@@ -174,51 +210,36 @@
         (text.includes("join the conversation") && el.children.length <= 2)
       ) {
         simulateRealClick(el);
-        return;
+        break;
       }
     }
-  }
 
-  // Finds the active editable element without broken offsetParent checks
-  async function findActiveEditor() {
-    for (let i = 0; i < 20; i++) {
-      const candidates = [
-        document.querySelector('comment-composer-host div[contenteditable="true"]'),
-        document.querySelector('shreddit-comment-composer div[contenteditable="true"]'),
-        document.querySelector('faceplate-form div[contenteditable="true"]'),
-        document.querySelector('div[role="textbox"][contenteditable="true"]'),
-        document.querySelector('div[contenteditable="true"]'),
-        document.querySelector('textarea[name="text"]'),
-        document.querySelector('textarea[placeholder*="comment" i]'),
-        document.querySelector('textarea[placeholder*="conversation" i]'),
-        document.querySelector('faceplate-textarea-input textarea')
-      ].filter(Boolean);
+    await sleep(1000);
 
-      for (const cand of candidates) {
+    // Find editor
+    let editor = null;
+    for (let i = 0; i < 15; i++) {
+      const cand = document.querySelector('comment-composer-host div[contenteditable="true"], shreddit-comment-composer div[contenteditable="true"], faceplate-form div[contenteditable="true"], div[role="textbox"][contenteditable="true"], div[contenteditable="true"], textarea[name="text"]');
+      if (cand) {
         const style = window.getComputedStyle(cand);
         if (style.display !== "none" && style.visibility !== "hidden") {
-          return cand;
+          editor = cand;
+          break;
         }
       }
-
-      // Check shadowRoot if applicable
-      const hosts = Array.from(document.querySelectorAll('comment-composer-host, shreddit-comment-composer'));
-      for (const h of hosts) {
-        if (h.shadowRoot) {
-          const shadowEditor = h.shadowRoot.querySelector('div[contenteditable="true"], textarea');
-          if (shadowEditor) return shadowEditor;
-        }
-      }
-
       await sleep(250);
     }
-    return null;
-  }
 
-  // Inserts text into Lexical / ProseMirror and triggers full change pipelines
-  function insertTextIntoEditor(editor, text) {
+    if (!editor) {
+      throw new Error("Could not find the comment box on Reddit.");
+    }
+
+    updateStatus("Typing approved response...");
+    editor.scrollIntoView({ behavior: "smooth", block: "center" });
     editor.focus();
+    await sleep(400);
 
+    // Insert text
     if (editor.isContentEditable) {
       const selection = window.getSelection();
       const range = document.createRange();
@@ -226,58 +247,42 @@
       selection.removeAllRanges();
       selection.addRange(range);
 
-      const ok = document.execCommand("insertText", false, text);
-      if (!ok || !(editor.textContent || "").includes(text.slice(0, 8))) {
-        editor.innerText = text;
+      const ok = document.execCommand("insertText", false, job.text);
+      if (!ok || !(editor.textContent || "").includes(job.text.slice(0, 8))) {
+        editor.innerText = job.text;
       }
-
-      editor.dispatchEvent(new InputEvent("beforeinput", { inputType: "insertText", data: text, bubbles: true, cancelable: true }));
-      editor.dispatchEvent(new InputEvent("input", { inputType: "insertText", data: text, bubbles: true }));
+      editor.dispatchEvent(new InputEvent("input", { inputType: "insertText", data: job.text, bubbles: true }));
       editor.dispatchEvent(new Event("change", { bubbles: true }));
-      editor.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
-      editor.dispatchEvent(new KeyboardEvent("keyup", { bubbles: true, key: "Enter" }));
     } else {
-      editor.value = text;
+      editor.value = job.text;
       editor.dispatchEvent(new Event("input", { bubbles: true }));
       editor.dispatchEvent(new Event("change", { bubbles: true }));
     }
-  }
 
-  // Finds submit button strictly inside the composer
-  async function findComposerSubmitButton(editor) {
-    for (let i = 0; i < 15; i++) {
-      const composer = (
-        editor.closest("comment-composer-host") ||
-        editor.closest("shreddit-comment-composer") ||
-        editor.closest("faceplate-form") ||
-        editor.closest("form") ||
-        editor.parentElement?.parentElement
-      );
+    await sleep(1000);
 
-      if (composer) {
-        const buttons = Array.from(composer.querySelectorAll('button'));
-        const submitBtn = buttons.find((btn) => {
-          const text = (btn.textContent || "").trim().toLowerCase();
-          const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
-          return (text === "comment" || text === "reply" || text === "save" || aria === "comment");
-        });
+    // Submit button
+    const composer = editor.closest("comment-composer-host, shreddit-comment-composer, faceplate-form, form") || editor.parentElement?.parentElement;
+    const submitBtn = Array.from(composer?.querySelectorAll('button') || []).find((b) => {
+      const t = (b.textContent || "").trim().toLowerCase();
+      return (t === "comment" || t === "save" || t === "reply") && !b.disabled;
+    });
 
-        if (submitBtn && !submitBtn.disabled) return submitBtn;
-      }
-
-      // Check root node if in shadow DOM
-      const root = editor.getRootNode && editor.getRootNode();
-      if (root && root.querySelectorAll) {
-        const shadowButtons = Array.from(root.querySelectorAll('button'));
-        const shadowSubmit = shadowButtons.find((btn) => {
-          const text = (btn.textContent || "").trim().toLowerCase();
-          return (text === "comment" || text === "reply" || text === "save") && !btn.disabled;
-        });
-        if (shadowSubmit) return shadowSubmit;
-      }
-
-      await sleep(250);
+    if (!submitBtn) {
+      throw new Error("Could not find enabled submit button.");
     }
-    return null;
+
+    simulateRealClick(submitBtn);
+    updateStatus("Submitting to Reddit...", true);
+    await sleep(3500);
+
+    updateStatus("✅ Success! Comment posted to Reddit.", true);
+
+    chrome.runtime.sendMessage({
+      action: "REDDIT_POST_DONE",
+      success: true,
+      opportunityId: job.opportunityId,
+      commentUrl: window.location.href
+    });
   }
 })();

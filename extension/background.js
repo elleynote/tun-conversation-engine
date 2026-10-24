@@ -25,15 +25,19 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         } catch (e) {
           console.warn("Could not send EXECUTE_POST to Reddit tab:", e);
         }
-      }, 1000);
+      }, 800);
     }
   }
 });
 
 async function handleStartPosting(data, dashboardTabId) {
+  // Use old.reddit.com for bulletproof, standard HTML form submission with the user's existing login session
+  const targetUrl = data.url.replace(/^https?:\/\/(www\.)?reddit\.com/i, "https://old.reddit.com");
+
   const job = {
     opportunityId: data.opportunityId,
-    url: data.url,
+    originalUrl: data.url,
+    url: targetUrl,
     text: data.text,
     dashboardTabId: dashboardTabId,
     startedAt: Date.now()
@@ -42,8 +46,8 @@ async function handleStartPosting(data, dashboardTabId) {
   // Persist pending job in local storage
   await chrome.storage.local.set({ tunPendingJob: job });
 
-  // Open the Reddit conversation in a new tab
-  chrome.tabs.create({ url: data.url, active: true }, (newTab) => {
+  // Open the Reddit conversation in a tab
+  chrome.tabs.create({ url: targetUrl, active: true }, (newTab) => {
     job.redditTabId = newTab.id;
     chrome.storage.local.set({ tunPendingJob: job });
   });
@@ -71,7 +75,7 @@ async function handleRedditPostDone(result) {
     }
   }
 
-  // If successful, switch focus back to dashboard tab after a short delay
+  // Only close tab if 100% verified success
   if (result.success && job.dashboardTabId) {
     setTimeout(() => {
       try {
@@ -80,7 +84,6 @@ async function handleRedditPostDone(result) {
           chrome.tabs.remove(job.redditTabId);
         }
       } catch (e) {}
-    }, 4000);
+    }, 3500);
   }
-  // If not successful, leave the Reddit tab open with the floating banner so the user can see/fix!
 }

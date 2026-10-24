@@ -250,7 +250,24 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
         </div>
       ) : null}
 
-      {posted ? <div className="success-note section-tight"><strong>Posted to {platformLabel}.</strong> This opportunity is complete.</div> : null}
+      {posted ? (
+        <div className="manual-post-box section-tight">
+          <div className="label">Status: Posted to {platformLabel}</div>
+          <div className="actions" style={{ marginTop: "8px" }}>
+            <button className="btn secondary" disabled={busy} onClick={() => update("awaiting_review", false)}>
+              ↩ Move back to Review
+            </button>
+            {opportunity.original_url ? (
+              <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">
+                View on {platformLabel} ↗
+              </a>
+            ) : null}
+            <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>
+              {nextOpportunityId ? "Next suggestion →" : "Back to queue"}
+            </button>
+          </div>
+        </div>
+      ) : null}
       {message ? <p className="small muted">{message}</p> : null}
     </div>
   );
