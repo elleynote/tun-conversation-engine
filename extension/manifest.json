@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "Tun Conversation Engine Auto-Poster",
+  "version": "1.0.0",
+  "description": "Automated Reddit comment publisher for Tun Conversation Engine",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*.netlify.app/*",
+    "https://*.scousi.com/*",
+    "https://*.reddit.com/*",
+    "https://reddit.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "https://*.netlify.app/*",
+        "https://*.scousi.com/*"
+      ],
+      "js": ["dashboard-bridge.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://*.reddit.com/*",
+        "https://reddit.com/*"
+      ],
+      "js": ["reddit-poster.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useState, useEffect, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { OpportunityView, OpportunityStatus } from "@/lib/types";
 
@@ -10,6 +10,50 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
   const [status, setStatus] = useState<OpportunityStatus>(opportunity.status);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [extensionConnected, setExtensionConnected] = useState(false);
+
+  useEffect(() => {
+    function checkExtension() {
+      if (document.documentElement.dataset.tunExtensionLoaded === "true") {
+        setExtensionConnected(true);
+      }
+    }
+
+    checkExtension();
+
+    function handleExtensionReady() {
+      setExtensionConnected(true);
+    }
+
+    function handleMessage(event: MessageEvent) {
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type === "TUN_PONG_EXTENSION") {
+        setExtensionConnected(true);
+      }
+
+      if (event.data.type === "TUN_POST_RESULT" && event.data.opportunityId === opportunity.id) {
+        setBusy(false);
+        if (event.data.success) {
+          update("posted", false);
+          setMessage("⚡ Successfully posted to Reddit via Chrome Extension!");
+        } else {
+          setMessage(`Extension posting error: ${event.data.error || "Failed to post automatically"}`);
+        }
+      }
+    }
+
+    window.addEventListener("tun-extension-ready", handleExtensionReady);
+    window.addEventListener("message", handleMessage);
+
+    // Send a ping to check if extension is already active
+    window.postMessage({ type: "TUN_PING_EXTENSION" }, "*");
+
+    return () => {
+      window.removeEventListener("tun-extension-ready", handleExtensionReady);
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [opportunity.id]);
 
   async function update(nextStatus: OpportunityStatus, includeDraft = true) {
     setBusy(true); setMessage("");
@@ -29,6 +73,45 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Something went wrong");
     } finally { setBusy(false); }
+  }
+
+  async function autoPostToReddit() {
+    if (!draft.trim() || !opportunity.original_url) return;
+    setBusy(true);
+    setMessage("Sending comment to Chrome Extension to post on Reddit...");
+
+    // Approve the opportunity internally first if needed
+    if (status !== "approved") {
+      try {
+        const body: Record<string, unknown> = { status: "approved", draft_body: draft };
+        const res = await fetch(`/api/opportunities/${opportunity.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) setStatus("approved");
+      } catch (e) {
+        console.warn("Could not pre-approve draft before extension post:", e);
+      }
+    }
+
+    // Trigger the extension bridge
+    window.postMessage({
+      type: "TUN_TRIGGER_REDDIT_POST",
+      opportunityId: opportunity.id,
+      url: opportunity.original_url,
+      text: draft,
+    }, "*");
+
+    // Safety timeout in case extension is not installed or tab closed
+    setTimeout(() => {
+      setBusy((current) => {
+        if (current) {
+          setMessage((prev) => prev.startsWith("Sending") ? "If the extension didn't trigger, verify it is loaded at chrome://extensions." : prev);
+        }
+        return false;
+      });
+    }, 15000);
   }
 
   async function promote() {
@@ -101,11 +184,18 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
   const approved = status === "approved";
   const posted = status === "posted";
   const manualBlank = status === "awaiting_review" && !opportunity.draft?.body;
+  const isReddit = opportunity.platform === "reddit";
 
   return (
     <div className="card panel">
       <div className="section-head">
-        <div><div className="eyebrow">Review response</div><h2>{manualBlank ? "Write a manual reply" : "Suggested reply"}</h2></div>
+        <div>
+          <div className="eyebrow">
+            Review response
+            {extensionConnected ? <span style={{ marginLeft: "8px", color: "#22c55e", fontWeight: "normal" }}>• ⚡ Extension Connected</span> : null}
+          </div>
+          <h2>{manualBlank ? "Write a manual reply" : "Suggested reply"}</h2>
+        </div>
         <span className={`badge ${approved || posted ? "green" : "blue"}`}>{status.replaceAll("_", " ")}</span>
       </div>
       <div className="field">
@@ -115,6 +205,16 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
 
       {!approved && !posted ? (
         <div className="actions">
+          {isReddit && opportunity.original_url ? (
+            <button
+              className="btn primary"
+              disabled={busy || !draft.trim()}
+              onClick={autoPostToReddit}
+              title="Post directly to Reddit via Chrome Extension"
+            >
+              ⚡ Auto-Post to Reddit
+            </button>
+          ) : null}
           <button className="btn success" disabled={busy || !draft.trim()} onClick={() => update("approved")}>Approve</button>
           <button className="btn secondary" disabled={busy || !draft.trim()} onClick={() => update("awaiting_review")}>Save edit</button>
           <button className="btn danger" disabled={busy} onClick={() => update("rejected", false)}>Reject</button>
@@ -126,10 +226,22 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
 
       {approved || posted ? (
         <div className="manual-post-box">
-          <div className="label">Manual {platformLabel} posting</div>
-          <p className="small muted">The final posting step is manual for {platformLabel}. Copy the approved reply, open the original conversation, post it, then mark it as posted here.</p>
+          <div className="label">{platformLabel} posting</div>
+          <p className="small muted">
+            {isReddit ? "Post with one click using the Chrome Extension, or copy and paste manually." : `The final posting step is manual for ${platformLabel}. Copy the approved reply, open the conversation, post it, then mark it as posted.`}
+          </p>
           <div className="actions">
-            <button className="btn primary" disabled={busy || !draft.trim()} onClick={copyReply}>Copy reply</button>
+            {isReddit && !posted && opportunity.original_url ? (
+              <button
+                className="btn primary"
+                disabled={busy || !draft.trim()}
+                onClick={autoPostToReddit}
+                title="Post directly to Reddit via Chrome Extension"
+              >
+                ⚡ Auto-Post to Reddit
+              </button>
+            ) : null}
+            <button className="btn secondary" disabled={busy || !draft.trim()} onClick={copyReply}>Copy reply</button>
             {opportunity.original_url ? <button className="btn secondary" disabled={busy || !draft.trim()} onClick={copyAndOpenSource}>Copy + open {platformLabel}</button> : null}
             {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">Open {platformLabel} only ↗</a> : null}
             {!posted ? <button className="btn success" disabled={busy} onClick={() => update("posted", false)}>Mark as posted</button> : null}
@@ -138,7 +250,7 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
         </div>
       ) : null}
 
-      {posted ? <div className="success-note section-tight"><strong>Posted manually to {platformLabel}.</strong> This opportunity is complete.</div> : null}
+      {posted ? <div className="success-note section-tight"><strong>Posted to {platformLabel}.</strong> This opportunity is complete.</div> : null}
       {message ? <p className="small muted">{message}</p> : null}
     </div>
   );
