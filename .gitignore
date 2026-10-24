@@ -8,4 +8,5 @@ out
 .DS_Store
 *.log
 *.tsbuildinfo
+*.zip
 supabase/.temp
