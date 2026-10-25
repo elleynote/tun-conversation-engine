@@ -12,6 +12,16 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
   const [message, setMessage] = useState("");
   const [extensionConnected, setExtensionConnected] = useState(false);
 
+  const platform = opportunity.platform || "source";
+  const platformLabel =
+    platform === "facebook" ? "Facebook" :
+    platform === "instagram" ? "Instagram" :
+    platform === "youtube" ? "YouTube" :
+    platform === "reddit" ? "Reddit" :
+    "source";
+
+  const isAutomatedPlatform = ["reddit", "facebook", "instagram"].includes(platform);
+
   useEffect(() => {
     function checkExtension() {
       if (document.documentElement.dataset.tunExtensionLoaded === "true") {
@@ -36,9 +46,9 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
         setBusy(false);
         if (event.data.success) {
           update("posted", false);
-          setMessage("⚡ Successfully posted to Reddit via Chrome Extension!");
+          setMessage(`⚡ Successfully posted to ${platformLabel} via Chrome Extension!`);
         } else {
-          setMessage(`Extension posting error: ${event.data.error || "Failed to post automatically"}`);
+          setMessage(`Extension posting notice: ${event.data.error || "Failed to post automatically"}`);
         }
       }
     }
@@ -46,14 +56,13 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
     window.addEventListener("tun-extension-ready", handleExtensionReady);
     window.addEventListener("message", handleMessage);
 
-    // Send a ping to check if extension is already active
     window.postMessage({ type: "TUN_PING_EXTENSION" }, "*");
 
     return () => {
       window.removeEventListener("tun-extension-ready", handleExtensionReady);
       window.removeEventListener("message", handleMessage);
     };
-  }, [opportunity.id]);
+  }, [opportunity.id, platformLabel]);
 
   async function update(nextStatus: OpportunityStatus, includeDraft = true) {
     setBusy(true); setMessage("");
@@ -75,12 +84,11 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
     } finally { setBusy(false); }
   }
 
-  async function autoPostToReddit() {
+  async function autoPostToSocial() {
     if (!draft.trim() || !opportunity.original_url) return;
     setBusy(true);
-    setMessage("Sending comment to Chrome Extension to post on Reddit...");
+    setMessage(`Sending comment to Chrome Extension to post on ${platformLabel}...`);
 
-    // Approve the opportunity internally first if needed
     if (status !== "approved") {
       try {
         const body: Record<string, unknown> = { status: "approved", draft_body: draft };
@@ -95,15 +103,24 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
       }
     }
 
-    // Trigger the extension bridge
     window.postMessage({
-      type: "TUN_TRIGGER_REDDIT_POST",
+      type: "TUN_TRIGGER_POST",
+      platform: opportunity.platform,
       opportunityId: opportunity.id,
       url: opportunity.original_url,
       text: draft,
     }, "*");
 
-    // Safety timeout in case extension is not installed or tab closed
+    // Backward compatibility for existing extension listener
+    if (opportunity.platform === "reddit") {
+      window.postMessage({
+        type: "TUN_TRIGGER_REDDIT_POST",
+        opportunityId: opportunity.id,
+        url: opportunity.original_url,
+        text: draft,
+      }, "*");
+    }
+
     setTimeout(() => {
       setBusy((current) => {
         if (current) {
@@ -137,8 +154,6 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
       setMessage("Could not copy automatically. Please select and copy the reply manually.");
     }
   }
-
-  const platformLabel = opportunity.platform === "youtube" ? "YouTube" : opportunity.platform === "reddit" ? "Reddit" : "source";
 
   async function copyAndOpenSource() {
     if (opportunity.original_url) window.open(opportunity.original_url, "_blank", "noopener,noreferrer");
@@ -174,7 +189,7 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
           <button className="btn primary" disabled={busy} onClick={promote}>Mark as reply opportunity</button>
           <button className="btn danger" disabled={busy} onClick={dismissAndNext}>Dismiss & next</button>
           <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
-          {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">{platformLabel === "YouTube" ? "View YouTube comment ↗" : platformLabel === "Reddit" ? "View Reddit thread ↗" : "View source ↗"}</a> : null}
+          {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">View on {platformLabel} ↗</a> : null}
         </div>
         {message ? <p className="small muted">{message}</p> : null}
       </div>
@@ -184,7 +199,6 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
   const approved = status === "approved";
   const posted = status === "posted";
   const manualBlank = status === "awaiting_review" && !opportunity.draft?.body;
-  const isReddit = opportunity.platform === "reddit";
 
   return (
     <div className="card panel">
@@ -205,14 +219,14 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
 
       {!approved && !posted ? (
         <div className="actions">
-          {isReddit && opportunity.original_url ? (
+          {isAutomatedPlatform && opportunity.original_url ? (
             <button
               className="btn primary"
               disabled={busy || !draft.trim()}
-              onClick={autoPostToReddit}
-              title="Post directly to Reddit via Chrome Extension"
+              onClick={autoPostToSocial}
+              title={`Post directly to ${platformLabel} via Chrome Extension`}
             >
-              ⚡ Auto-Post to Reddit
+              ⚡ Auto-Post to {platformLabel}
             </button>
           ) : null}
           <button className="btn success" disabled={busy || !draft.trim()} onClick={() => update("approved")}>Approve</button>
@@ -220,31 +234,33 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
           <button className="btn danger" disabled={busy} onClick={() => update("rejected", false)}>Reject</button>
           <button className="btn danger" disabled={busy} onClick={dismissAndNext}>Dismiss & next</button>
           <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
-          {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">{platformLabel === "YouTube" ? "View YouTube comment ↗" : platformLabel === "Reddit" ? "View Reddit thread ↗" : "View source ↗"}</a> : null}
+          {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">View on {platformLabel} ↗</a> : null}
         </div>
       ) : null}
 
-      {approved || posted ? (
+      {approved && !posted ? (
         <div className="manual-post-box">
           <div className="label">{platformLabel} posting</div>
           <p className="small muted">
-            {isReddit ? "Post with one click using the Chrome Extension, or copy and paste manually." : `The final posting step is manual for ${platformLabel}. Copy the approved reply, open the conversation, post it, then mark it as posted.`}
+            {isAutomatedPlatform
+              ? `Post automatically with one click using the Chrome Extension, or copy and paste manually.`
+              : `The final posting step is manual for ${platformLabel}. Copy the approved reply, open the conversation, post it, then mark it as posted.`}
           </p>
           <div className="actions">
-            {isReddit && !posted && opportunity.original_url ? (
+            {isAutomatedPlatform && opportunity.original_url ? (
               <button
                 className="btn primary"
                 disabled={busy || !draft.trim()}
-                onClick={autoPostToReddit}
-                title="Post directly to Reddit via Chrome Extension"
+                onClick={autoPostToSocial}
+                title={`Post directly to ${platformLabel} via Chrome Extension`}
               >
-                ⚡ Auto-Post to Reddit
+                ⚡ Auto-Post to {platformLabel}
               </button>
             ) : null}
             <button className="btn secondary" disabled={busy || !draft.trim()} onClick={copyReply}>Copy reply</button>
             {opportunity.original_url ? <button className="btn secondary" disabled={busy || !draft.trim()} onClick={copyAndOpenSource}>Copy + open {platformLabel}</button> : null}
             {opportunity.original_url ? <a className="btn secondary" href={opportunity.original_url} target="_blank" rel="noreferrer">Open {platformLabel} only ↗</a> : null}
-            {!posted ? <button className="btn success" disabled={busy} onClick={() => update("posted", false)}>Mark as posted</button> : null}
+            <button className="btn success" disabled={busy} onClick={() => update("posted", false)}>Mark as posted</button>
             <button className="btn secondary" disabled={busy} onClick={goToNextSuggestion}>{nextOpportunityId ? "Next suggestion →" : "Back to queue"}</button>
           </div>
         </div>
@@ -253,6 +269,7 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
       {posted ? (
         <div className="manual-post-box section-tight">
           <div className="label">Status: Posted to {platformLabel}</div>
+          <p className="small muted">This opportunity has been posted.</p>
           <div className="actions" style={{ marginTop: "8px" }}>
             <button className="btn secondary" disabled={busy} onClick={() => update("awaiting_review", false)}>
               ↩ Move back to Review
@@ -268,6 +285,7 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
           </div>
         </div>
       ) : null}
+
       {message ? <p className="small muted">{message}</p> : null}
     </div>
   );

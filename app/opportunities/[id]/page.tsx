@@ -27,13 +27,19 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
   ]);
   if (!o) notFound();
   const authorLabel = o.author
-    ? o.platform === "reddit" ? `u/${o.author.replace(/^u\//, "")}` : o.author
+    ? o.platform === "reddit"
+      ? `u/${o.author.replace(/^u\//, "")}`
+      : o.platform === "instagram"
+        ? `@${o.author.replace(/^@/, "")}`
+        : o.author
     : "Unknown user";
-  const sourceLinkLabel = o.platform === "youtube"
-    ? "View YouTube comment ↗"
-    : o.platform === "reddit"
-      ? "View full Reddit thread ↗"
-      : "View source ↗";
+
+  const sourceLinkLabel =
+    o.platform === "youtube" ? "View YouTube comment ↗" :
+    o.platform === "reddit" ? "View full Reddit thread ↗" :
+    o.platform === "facebook" ? "View Facebook post ↗" :
+    o.platform === "instagram" ? "View Instagram post ↗" :
+    "View source ↗";
 
   return (
     <AppShell>

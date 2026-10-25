@@ -9,7 +9,12 @@ export function ThreadContext({ items, currentId, platform }: { items: ThreadIte
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const platformLabel = platform === "youtube" ? "YouTube" : platform === "reddit" ? "Reddit" : "source";
+  const platformLabel =
+    platform === "facebook" ? "Facebook" :
+    platform === "instagram" ? "Instagram" :
+    platform === "youtube" ? "YouTube" :
+    platform === "reddit" ? "Reddit" :
+    "source";
 
   async function promote(id: string) {
     setBusyId(id);
@@ -27,12 +32,30 @@ export function ThreadContext({ items, currentId, platform }: { items: ThreadIte
     }
   }
 
+  const threadTitle =
+    platform === "youtube" ? "YouTube comment thread" :
+    platform === "facebook" ? "Facebook post & comments" :
+    platform === "instagram" ? "Instagram post & comments" :
+    "Original post + relevant comments";
+
+  const rootBadge =
+    platform === "youtube" ? "top-level comment" :
+    platform === "facebook" ? "main post" :
+    platform === "instagram" ? "caption" :
+    "original post";
+
+  const childBadge =
+    platform === "youtube" ? "reply" :
+    platform === "facebook" ? "comment" :
+    platform === "instagram" ? "comment" :
+    "comment";
+
   return (
     <section className="card panel section">
       <div className="section-head">
         <div>
           <div className="eyebrow">Conversation context</div>
-          <h2>{platform === "youtube" ? "YouTube comment thread" : "Original post + relevant comments"}</h2>
+          <h2>{threadTitle}</h2>
         </div>
         <span className="badge blue">{items.length} item{items.length === 1 ? "" : "s"}</span>
       </div>
@@ -42,13 +65,19 @@ export function ThreadContext({ items, currentId, platform }: { items: ThreadIte
           const isCurrent = item.id === currentId;
           const isContextOnly = item.suppression_reason === "thread_context_only";
           const canPromote = !isCurrent && isContextOnly;
+          const authorFormatted = item.author
+            ? platform === "reddit" ? `u/${item.author.replace(/^u\//, "")}`
+            : platform === "instagram" ? `@${item.author.replace(/^@/, "")}`
+            : item.author
+            : "Unknown user";
+
           return (
             <div className={`thread-item ${item.is_thread_root ? "root" : "comment"}`} key={item.id}>
               <div className="thread-avatar"><UserAvatar author={item.author} avatarUrl={item.author_avatar_url} size="md" /></div>
               <div className="thread-body">
                 <div className="thread-meta-row">
-                  <div><strong>{item.author ? (platform === "reddit" ? `u/${item.author.replace(/^u\//, "")}` : item.author) : "Unknown user"}</strong><span> • {item.relativeTime}</span></div>
-                  <span className={`badge ${item.is_thread_root ? "blue" : ""}`}>{item.is_thread_root ? (platform === "youtube" ? "top-level comment" : "original post") : (platform === "youtube" ? "reply" : "comment")}</span>
+                  <div><strong>{authorFormatted}</strong><span> • {item.relativeTime}</span></div>
+                  <span className={`badge ${item.is_thread_root ? "blue" : ""}`}>{item.is_thread_root ? rootBadge : childBadge}</span>
                 </div>
                 <div className="thread-content">{item.content}</div>
                 <div className="actions compact">

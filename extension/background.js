@@ -7,8 +7,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === "REDDIT_POST_DONE") {
-    handleRedditPostDone(message);
+  if (message.action === "REDDIT_POST_DONE" || message.action === "POST_DONE") {
+    handlePostDone(message);
     sendResponse({ ok: true });
     return true;
   }
@@ -18,24 +18,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete") {
     const { tunPendingJob: job } = await chrome.storage.local.get("tunPendingJob");
-    if (job && job.redditTabId === tabId) {
+    if (job && (job.posterTabId === tabId || job.redditTabId === tabId)) {
       setTimeout(() => {
         try {
           chrome.tabs.sendMessage(tabId, { action: "EXECUTE_POST", job });
         } catch (e) {
-          console.warn("Could not send EXECUTE_POST to Reddit tab:", e);
+          console.warn("Could not send EXECUTE_POST to poster tab:", e);
         }
-      }, 800);
+      }, 1000);
     }
   }
 });
 
 async function handleStartPosting(data, dashboardTabId) {
+  const platform = data.platform || "reddit";
+  let targetUrl = data.url;
+
   // Use old.reddit.com for bulletproof, standard HTML form submission with the user's existing login session
-  const targetUrl = data.url.replace(/^https?:\/\/(www\.)?reddit\.com/i, "https://old.reddit.com");
+  if (platform === "reddit") {
+    targetUrl = data.url.replace(/^https?:\/\/(www\.)?reddit\.com/i, "https://old.reddit.com");
+  }
 
   const job = {
     opportunityId: data.opportunityId,
+    platform: platform,
     originalUrl: data.url,
     url: targetUrl,
     text: data.text,
@@ -46,14 +52,15 @@ async function handleStartPosting(data, dashboardTabId) {
   // Persist pending job in local storage
   await chrome.storage.local.set({ tunPendingJob: job });
 
-  // Open the Reddit conversation in a tab
+  // Open the conversation in a tab
   chrome.tabs.create({ url: targetUrl, active: true }, (newTab) => {
-    job.redditTabId = newTab.id;
+    job.posterTabId = newTab.id;
+    job.redditTabId = newTab.id; // backward-compatibility
     chrome.storage.local.set({ tunPendingJob: job });
   });
 }
 
-async function handleRedditPostDone(result) {
+async function handlePostDone(result) {
   const { tunPendingJob: job } = await chrome.storage.local.get("tunPendingJob");
   if (!job) return;
 
@@ -80,8 +87,9 @@ async function handleRedditPostDone(result) {
     setTimeout(() => {
       try {
         chrome.tabs.update(job.dashboardTabId, { active: true });
-        if (job.redditTabId) {
-          chrome.tabs.remove(job.redditTabId);
+        const targetTabId = job.posterTabId || job.redditTabId;
+        if (targetTabId) {
+          chrome.tabs.remove(targetTabId);
         }
       } catch (e) {}
     }, 3500);

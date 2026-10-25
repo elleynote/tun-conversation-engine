@@ -19,8 +19,19 @@ export function OpportunityCard({ opportunity }: { opportunity: OpportunityView 
   const reason = ignoredReason(opportunity);
   const platform = opportunity.platform ? opportunity.platform.charAt(0).toUpperCase() + opportunity.platform.slice(1) : "Source";
   const authorLabel = opportunity.author
-    ? opportunity.platform === "reddit" ? `u/${opportunity.author.replace(/^u\//, "")}` : opportunity.author
+    ? opportunity.platform === "reddit"
+      ? `u/${opportunity.author.replace(/^u\//, "")}`
+      : opportunity.platform === "instagram"
+        ? `@${opportunity.author.replace(/^@/, "")}`
+        : opportunity.author
     : "Unknown user";
+
+  const sourceLinkText =
+    opportunity.platform === "youtube" ? "View YouTube comment ↗" :
+    opportunity.platform === "reddit" ? "View Reddit thread ↗" :
+    opportunity.platform === "facebook" ? "View Facebook post ↗" :
+    opportunity.platform === "instagram" ? "View Instagram post ↗" :
+    "View source ↗";
 
   return (
     <article className="card opportunity">
@@ -50,7 +61,7 @@ export function OpportunityCard({ opportunity }: { opportunity: OpportunityView 
           {opportunity.products?.length ? <span>Route: {opportunity.products.map((p) => p.name).join(" + ")}</span> : null}
         </div>
         <div className="card-links">
-          {opportunity.original_url ? <a className="link" href={opportunity.original_url} target="_blank" rel="noreferrer">{opportunity.platform === "youtube" ? "View YouTube comment ↗" : opportunity.platform === "reddit" ? "View Reddit thread ↗" : "View source ↗"}</a> : null}
+          {opportunity.original_url ? <a className="link" href={opportunity.original_url} target="_blank" rel="noreferrer">{sourceLinkText}</a> : null}
           <Link className="link" href={`/opportunities/${opportunity.id}`}>Review →</Link>
         </div>
       </div>

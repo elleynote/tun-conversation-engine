@@ -19,6 +19,54 @@ function redditThreadInfo(url?: string | null) {
   }
 }
 
+function detectPlatform(backend?: string | null, url?: string | null): string {
+  if (url) {
+    try {
+      const parsed = new URL(url);
+      const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+      if (host === "youtu.be" || host.includes("youtube.com")) return "youtube";
+      if (host.includes("facebook.com") || host === "fb.com" || host.includes("fb.watch")) return "facebook";
+      if (host.includes("instagram.com")) return "instagram";
+      if (host.includes("reddit.com")) return "reddit";
+    } catch {}
+  }
+  const raw = String(backend || "").toLowerCase();
+  if (raw.includes("facebook") || raw === "fb") return "facebook";
+  if (raw.includes("instagram") || raw === "ig") return "instagram";
+  if (raw.includes("reddit")) return "reddit";
+  if (raw.includes("youtube")) return "youtube";
+  return raw || "unknown";
+}
+
+function detectThreadInfo(platform: string, url?: string | null) {
+  if (!url) return { threadKey: null, isThreadRoot: true };
+  if (platform === "reddit") {
+    return redditThreadInfo(url);
+  }
+  if (platform === "facebook") {
+    try {
+      const parsed = new URL(url);
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const postsIdx = parts.indexOf("posts");
+      if (postsIdx !== -1 && parts[postsIdx + 1]) {
+        return { threadKey: `facebook:${parts[postsIdx + 1]}`, isThreadRoot: true };
+      }
+      const storyId = parsed.searchParams.get("story_fbid") || parsed.searchParams.get("id");
+      if (storyId) return { threadKey: `facebook:${storyId}`, isThreadRoot: true };
+    } catch {}
+  }
+  if (platform === "instagram") {
+    try {
+      const parsed = new URL(url);
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      if (["p", "reel", "tv"].includes(parts[0]) && parts[1]) {
+        return { threadKey: `instagram:${parts[1]}`, isThreadRoot: true };
+      }
+    } catch {}
+  }
+  return { threadKey: null, isThreadRoot: true };
+}
+
 function isSuppressedRedditAuthor(author?: string | null) {
   const normalized = (author || "").trim().replace(/^u\//i, "").toLowerCase();
   return normalized === "automoderator";
@@ -75,15 +123,13 @@ Deno.serve(async (req: Request) => {
       const originalUrl = m.item?.item_url || null;
       const detectedYouTubeVideoId = youtubeVideoId(originalUrl);
       const rawPlatform = String(m.item?.backend || "unknown").toLowerCase();
-      const platform = detectedYouTubeVideoId ? "youtube" : rawPlatform;
+      const platform = detectedYouTubeVideoId ? "youtube" : detectPlatform(rawPlatform, originalUrl);
       const author = m.item?.author || null;
       if (platform === "reddit" && isSuppressedRedditAuthor(author)) {
         filteredBots++;
         continue;
       }
-      const thread = originalUrl?.includes("reddit.com/")
-        ? redditThreadInfo(originalUrl)
-        : { threadKey: null, isThreadRoot: true };
+      const thread = detectThreadInfo(platform, originalUrl);
 
       if (thread.threadKey) touchedThreadKeys.add(thread.threadKey);
 
@@ -114,7 +160,7 @@ Deno.serve(async (req: Request) => {
       if (!error) inserted++;
     }
 
-    // If Syften supplied only comments for a Reddit thread, promote the earliest
+    // If Syften supplied only comments for a thread, promote the earliest
     // comment as the single canonical opportunity so the thread is still reviewable.
     for (const threadKey of touchedThreadKeys) {
       const { data: rows, error: rowsError } = await supabase

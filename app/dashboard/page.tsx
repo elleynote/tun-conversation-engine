@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   return (
     <AppShell>
       <div className="page-head">
-        <div><div className="eyebrow">Multi-platform • Reddit + YouTube</div><h1>Conversation Engine</h1><div className="muted">Find relevant conversations, answer where appropriate, recommend the right Tun resource, and keep a human in control.</div></div>
+        <div><div className="eyebrow">Multi-platform • Reddit • Facebook • Instagram • YouTube</div><h1>Conversation Engine</h1><div className="muted">Find relevant conversations, answer where appropriate, recommend the right Tun resource, and keep a human in control.</div></div>
         <span className={`badge ${status.mode === "live" ? "green" : "amber"}`}>{status.mode} mode</span>
       </div>
 
@@ -57,7 +57,7 @@ export default async function DashboardPage() {
         <StatCard label="Detected" value={opportunities.length} hint="canonical conversations" href="/opportunities" />
         <StatCard label="Qualified" value={qualified} hint="relevance 3-5" href="/opportunities?status=qualified" />
         <StatCard label="Needs review" value={pending} hint="drafted responses" href="/opportunities?status=awaiting_review" />
-        <StatCard label="Posted" value={posted} hint="manually posted" href="/opportunities?status=posted" />
+        <StatCard label="Posted" value={posted} hint="manually or auto-posted" href="/opportunities?status=posted" />
       </div>
 
       <section className="section">
