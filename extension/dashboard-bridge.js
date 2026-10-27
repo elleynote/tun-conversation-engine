@@ -2,14 +2,14 @@
 (() => {
   // Announce to the web application that the Tun Extension is installed and active
   document.documentElement.dataset.tunExtensionLoaded = "true";
-  window.dispatchEvent(new CustomEvent("tun-extension-ready", { detail: { version: "1.1.0" } }));
+  window.dispatchEvent(new CustomEvent("tun-extension-ready", { detail: { version: "1.2.0" } }));
 
   // Listen for actions dispatched from the Next.js review UI
   window.addEventListener("message", (event) => {
     if (event.source !== window || !event.data || typeof event.data !== "object") return;
 
     if (event.data.type === "TUN_PING_EXTENSION") {
-      window.postMessage({ type: "TUN_PONG_EXTENSION", version: "1.1.0" }, "*");
+      window.postMessage({ type: "TUN_PONG_EXTENSION", version: "1.2.0" }, "*");
       return;
     }
 

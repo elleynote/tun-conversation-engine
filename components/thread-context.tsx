@@ -14,6 +14,7 @@ export function ThreadContext({ items, currentId, platform }: { items: ThreadIte
     platform === "instagram" ? "Instagram" :
     platform === "youtube" ? "YouTube" :
     platform === "reddit" ? "Reddit" :
+    platform === "x" ? "X" :
     "source";
 
   async function promote(id: string) {
@@ -67,7 +68,7 @@ export function ThreadContext({ items, currentId, platform }: { items: ThreadIte
           const canPromote = !isCurrent && isContextOnly;
           const authorFormatted = item.author
             ? platform === "reddit" ? `u/${item.author.replace(/^u\//, "")}`
-            : platform === "instagram" ? `@${item.author.replace(/^@/, "")}`
+            : platform === "instagram" || platform === "x" ? `@${item.author.replace(/^@/, "")}`
             : item.author
             : "Unknown user";
 

@@ -12,9 +12,10 @@ export default async function SettingsPage() {
   const rows = [
     ["Supabase", s.supabase ? "Configured" : "Waiting", s.supabase ? "on" : "", "Database + Edge Functions"],
     ["OpenAI", automation.openAIConnected ? "Configured" : "Waiting", automation.openAIConnected ? "on" : "", "Classification + drafting"],
-    ["Syften", automation.syftenConnected ? "Configured" : "Waiting", automation.syftenConnected ? "on" : "", "Multi-platform discovery (Reddit, Facebook, Instagram, YouTube)"],
+    ["Syften", automation.syftenConnected ? "Configured" : "Waiting", automation.syftenConnected ? "on" : "", "Multi-platform discovery (Reddit, X / Twitter, YouTube)"],
     ["YouTube comments", automation.youtubeConnected ? "Connected" : "Waiting for API key", automation.youtubeConnected ? "on" : "", "Fetch public comments from Syften-discovered YouTube videos"],
     ["Reddit posting", "Extension ready", "on", "1-click auto-posting via Tun Chrome Extension"],
+    ["X (Twitter) posting", "Extension ready", "on", "1-click auto-reply via Tun Chrome Extension"],
     ["Facebook posting", "Extension ready", "on", "1-click auto-posting to groups & posts via Tun Chrome Extension"],
     ["Instagram posting", "Extension ready", "on", "1-click auto-posting to posts/reels via Tun Chrome Extension"],
     ["YouTube posting", "Manual", "manual", "Copy approved reply → open YouTube → post → mark as posted"],
@@ -31,7 +32,7 @@ export default async function SettingsPage() {
         </tbody></table>
       </div>
       <div className="section success-note"><strong>Notification preference:</strong> dashboard only. Reviewers see new/awaiting-review opportunities inside this app.</div>
-      <div className="section notice"><strong>1-Click Auto-Posting:</strong> Reddit, Facebook, and Instagram support 1-click automated posting via the private Tun Chrome Extension. YouTube starts in manual-posting mode until official channel OAuth is connected.</div>
+      <div className="section notice"><strong>1-Click Auto-Posting:</strong> Reddit, X (Twitter), Facebook, and Instagram support 1-click automated posting via the private Tun Chrome Extension. YouTube starts in manual-posting mode until official channel OAuth is connected.</div>
     </AppShell>
   );
 }

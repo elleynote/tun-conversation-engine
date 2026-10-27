@@ -21,7 +21,7 @@ export function OpportunityCard({ opportunity }: { opportunity: OpportunityView 
   const authorLabel = opportunity.author
     ? opportunity.platform === "reddit"
       ? `u/${opportunity.author.replace(/^u\//, "")}`
-      : opportunity.platform === "instagram"
+      : opportunity.platform === "instagram" || opportunity.platform === "x"
         ? `@${opportunity.author.replace(/^@/, "")}`
         : opportunity.author
     : "Unknown user";
@@ -31,6 +31,7 @@ export function OpportunityCard({ opportunity }: { opportunity: OpportunityView 
     opportunity.platform === "reddit" ? "View Reddit thread ↗" :
     opportunity.platform === "facebook" ? "View Facebook post ↗" :
     opportunity.platform === "instagram" ? "View Instagram post ↗" :
+    opportunity.platform === "x" ? "View post on X ↗" :
     "View source ↗";
 
   return (

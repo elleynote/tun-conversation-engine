@@ -27,7 +27,7 @@ export default async function DashboardPage() {
   return (
     <AppShell>
       <div className="page-head">
-        <div><div className="eyebrow">Multi-platform • Reddit • Facebook • Instagram • YouTube</div><h1>Conversation Engine</h1><div className="muted">Find relevant conversations, answer where appropriate, recommend the right Tun resource, and keep a human in control.</div></div>
+        <div><div className="eyebrow">Multi-platform • Reddit • X • Facebook • Instagram • YouTube</div><h1>Conversation Engine</h1><div className="muted">Find relevant conversations, answer where appropriate, recommend the right Tun resource, and keep a human in control.</div></div>
         <span className={`badge ${status.mode === "live" ? "green" : "amber"}`}>{status.mode} mode</span>
       </div>
 

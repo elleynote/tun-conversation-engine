@@ -29,7 +29,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
   const authorLabel = o.author
     ? o.platform === "reddit"
       ? `u/${o.author.replace(/^u\//, "")}`
-      : o.platform === "instagram"
+      : o.platform === "instagram" || o.platform === "x"
         ? `@${o.author.replace(/^@/, "")}`
         : o.author
     : "Unknown user";
@@ -39,6 +39,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
     o.platform === "reddit" ? "View full Reddit thread ↗" :
     o.platform === "facebook" ? "View Facebook post ↗" :
     o.platform === "instagram" ? "View Instagram post ↗" :
+    o.platform === "x" ? "View post on X ↗" :
     "View source ↗";
 
   return (

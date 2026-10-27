@@ -27,12 +27,14 @@ function detectPlatform(backend?: string | null, url?: string | null): string {
       if (host === "youtu.be" || host.includes("youtube.com")) return "youtube";
       if (host.includes("facebook.com") || host === "fb.com" || host.includes("fb.watch")) return "facebook";
       if (host.includes("instagram.com")) return "instagram";
+      if (host.includes("twitter.com") || host.includes("x.com")) return "x";
       if (host.includes("reddit.com")) return "reddit";
     } catch {}
   }
   const raw = String(backend || "").toLowerCase();
   if (raw.includes("facebook") || raw === "fb") return "facebook";
   if (raw.includes("instagram") || raw === "ig") return "instagram";
+  if (raw.includes("twitter") || raw === "x") return "x";
   if (raw.includes("reddit")) return "reddit";
   if (raw.includes("youtube")) return "youtube";
   return raw || "unknown";
@@ -61,6 +63,16 @@ function detectThreadInfo(platform: string, url?: string | null) {
       const parts = parsed.pathname.split("/").filter(Boolean);
       if (["p", "reel", "tv"].includes(parts[0]) && parts[1]) {
         return { threadKey: `instagram:${parts[1]}`, isThreadRoot: true };
+      }
+    } catch {}
+  }
+  if (platform === "x") {
+    try {
+      const parsed = new URL(url);
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const statusIdx = parts.indexOf("status");
+      if (statusIdx !== -1 && parts[statusIdx + 1]) {
+        return { threadKey: `x:${parts[statusIdx + 1]}`, isThreadRoot: true };
       }
     } catch {}
   }
