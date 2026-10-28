@@ -1,6 +1,6 @@
 # Tun Conversation Engine Chrome Extension
 
-Automates Reddit, X (Twitter), Facebook, and Instagram commenting directly from your authenticated browser session without needing official commercial developer API approvals.
+Automates Reddit, X (Twitter), Facebook, Instagram, and LinkedIn commenting directly from your authenticated browser session without needing official commercial developer API approvals.
 
 ## Installation (Takes 30 seconds)
 
@@ -19,8 +19,9 @@ Automates Reddit, X (Twitter), Facebook, and Instagram commenting directly from 
    - **"⚡ Auto-Post to X"**
    - **"⚡ Auto-Post to Facebook"**
    - **"⚡ Auto-Post to Instagram"**
+   - **"⚡ Auto-Post to LinkedIn"**
 3. The extension:
-   - Opens the post/tweet in a tab.
+   - Opens the post/discussion in a tab.
    - Types your approved reply with human-like input events.
    - Clicks the submit/reply button.
    - Automatically marks the item as **"Posted"** in your Tun dashboard.

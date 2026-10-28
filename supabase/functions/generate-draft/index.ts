@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
     const result = await responses({
       model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra",
       reasoning: { effort: "low" },
-      instructions: `Write one natural public ${opportunity.platform === "youtube" ? "YouTube comment reply" : opportunity.platform === "reddit" ? "Reddit reply" : opportunity.platform === "facebook" ? "Facebook comment or group reply" : opportunity.platform === "instagram" ? "Instagram comment" : opportunity.platform === "x" ? "X (Twitter) reply (strictly under 280 characters)" : "social reply"} for Tun's Armenian-language ecosystem.
+      instructions: `Write one natural public ${opportunity.platform === "youtube" ? "YouTube comment reply" : opportunity.platform === "reddit" ? "Reddit reply" : opportunity.platform === "facebook" ? "Facebook comment or group reply" : opportunity.platform === "instagram" ? "Instagram comment" : opportunity.platform === "x" ? "X (Twitter) reply (strictly under 280 characters)" : opportunity.platform === "linkedin" ? "LinkedIn professional discussion comment" : "social reply"} for Tun's Armenian-language ecosystem.
 
 Follow response_mode exactly:
 - answer_and_recommend: briefly answer the actual question first, then naturally recommend only approved resources below.
@@ -146,7 +146,7 @@ ${approvedProductContext(products)}`,
       const repaired = await responses({
         model: Deno.env.get("OPENAI_DRAFT_MODEL") || "gpt-5.6-terra",
         reasoning: { effort: "low" },
-        instructions: `Revise the supplied ${opportunity.platform === "youtube" ? "YouTube" : opportunity.platform === "reddit" ? "Reddit" : opportunity.platform === "facebook" ? "Facebook" : opportunity.platform === "instagram" ? "Instagram" : opportunity.platform === "x" ? "X (Twitter)" : "social"} reply without changing its useful answer.
+        instructions: `Revise the supplied ${opportunity.platform === "youtube" ? "YouTube" : opportunity.platform === "reddit" ? "Reddit" : opportunity.platform === "facebook" ? "Facebook" : opportunity.platform === "instagram" ? "Instagram" : opportunity.platform === "x" ? "X (Twitter)" : opportunity.platform === "linkedin" ? "LinkedIn" : "social"} reply without changing its useful answer.
 
 Requirements:
 - Keep it concise, warm, practical, human and not salesy.

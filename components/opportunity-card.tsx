@@ -32,6 +32,7 @@ export function OpportunityCard({ opportunity }: { opportunity: OpportunityView 
     opportunity.platform === "facebook" ? "View Facebook post ↗" :
     opportunity.platform === "instagram" ? "View Instagram post ↗" :
     opportunity.platform === "x" ? "View post on X ↗" :
+    opportunity.platform === "linkedin" ? "View LinkedIn post ↗" :
     "View source ↗";
 
   return (

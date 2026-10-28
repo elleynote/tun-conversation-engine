@@ -84,6 +84,14 @@ export const demoOpportunities: OpportunityView[] = [
     draft: { body: "For typing in the browser without installing layouts, armeniankeyboard.com is great and supports Western rules. For full speaking, reading, and literacy for kids, Tun Online Armenian School (tunapp.com) has interactive 1-on-1 lessons designed for diaspora learners.", version: 1, status: "generated" },
   },
   {
+    id: "demo-7", platform: "linkedin", community: "LinkedIn: Armenian Diaspora", author: "Aram Hovhannisyan", title: "Online resources for teaching children conversational Western Armenian",
+    content: "Balancing busy work schedules in the diaspora while trying to keep our heritage language alive is tough. Does anyone have recommendations for structured online Armenian tutoring for kids?",
+    original_url: "https://www.linkedin.com/feed/update/urn:li:activity:7521296424731414528/", published_at: new Date(now - 1.5 * 3600000).toISOString(), detected_at: new Date(now - 1.2 * 3600000).toISOString(), relativeTime: "1h ago", status: "awaiting_review", matched_filter: "learn armenian",
+    classification: { relevance_score: 5, intent: "parent_child_learning", dialect: "western", commercial_intent: 5, recommended_product_key: "tun_school", recommended_product_keys: ["tun_school"], response_mode: "answer_and_recommend", answer_confidence: 0.98, should_reply: true, confidence: 0.99, reason: "Parent asking for online structured Armenian tutoring for diaspora kids on LinkedIn." },
+    product: demoProducts[0], products: [demoProducts[0]],
+    draft: { body: "Preserving conversational Armenian in the diaspora is one of the most rewarding commitments for families. Tun Online Armenian School (tunapp.com) provides structured 1-on-1 online lessons specifically designed for diaspora learners, covering speaking confidence, vocabulary, and both Western and Eastern dialects. They offer an introductory 4-lesson trial for $1 to see how your children engage with the curriculum.", version: 1, status: "generated" },
+  },
+  {
     id: "demo-5", platform: "reddit", community: "r/translator", author: "phrase_help", title: "How do I say happy birthday in Armenian?",
     content: "I only need the phrase for a card. How do I say happy birthday in Armenian?",
     original_url: "https://www.reddit.com/", published_at: new Date(now - 46 * 60000).toISOString(), detected_at: new Date(now - 44 * 60000).toISOString(), relativeTime: "44m ago", status: "qualified", matched_filter: "armenian translation",

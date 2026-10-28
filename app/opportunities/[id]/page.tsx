@@ -40,6 +40,7 @@ export default async function OpportunityPage({ params }: { params: Promise<{ id
     o.platform === "facebook" ? "View Facebook post ↗" :
     o.platform === "instagram" ? "View Instagram post ↗" :
     o.platform === "x" ? "View post on X ↗" :
+    o.platform === "linkedin" ? "View LinkedIn post ↗" :
     "View source ↗";
 
   return (

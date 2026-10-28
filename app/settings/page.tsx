@@ -19,6 +19,7 @@ export default async function SettingsPage() {
     ["X (Twitter) posting", "Extension ready", "on", "1-click auto-reply via Tun Chrome Extension"],
     ["Facebook posting", "Extension ready", "on", "1-click auto-posting to groups & posts via Tun Chrome Extension"],
     ["Instagram posting", "Extension ready", "on", "1-click auto-posting to posts/reels via Tun Chrome Extension"],
+    ["LinkedIn posting", "Extension ready", "on", "1-click auto-commenting via Tun Chrome Extension"],
     ["YouTube posting", "Manual", "manual", "Copy approved reply → open YouTube → post → mark as posted"],
     ["Dashboard access", "No login", "manual", "Current single-business phase: no sign-up or login."],
     ["Netlify runtime", s.netlify ? "Configured" : "Waiting", s.netlify ? "on" : "", "Dashboard hosting"],
@@ -33,7 +34,7 @@ export default async function SettingsPage() {
         </tbody></table>
       </div>
       <div className="section success-note"><strong>Notification preference:</strong> dashboard only. Reviewers see new/awaiting-review opportunities inside this app.</div>
-      <div className="section notice"><strong>1-Click Auto-Posting:</strong> Reddit, X (Twitter), Facebook, and Instagram support 1-click automated posting via the private Tun Chrome Extension. YouTube starts in manual-posting mode until official channel OAuth is connected.</div>
+      <div className="section notice"><strong>1-Click Auto-Posting:</strong> Reddit, X (Twitter), Facebook, Instagram, and LinkedIn support 1-click automated posting via the private Tun Chrome Extension. YouTube starts in manual-posting mode until official channel OAuth is connected.</div>
     </AppShell>
   );
 }

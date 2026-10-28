@@ -19,9 +19,10 @@ export function OpportunityReview({ opportunity, nextOpportunityId }: { opportun
     platform === "youtube" ? "YouTube" :
     platform === "reddit" ? "Reddit" :
     platform === "x" ? "X" :
+    platform === "linkedin" ? "LinkedIn" :
     "source";
 
-  const isAutomatedPlatform = ["reddit", "facebook", "instagram", "x"].includes(platform);
+  const isAutomatedPlatform = ["reddit", "facebook", "instagram", "x", "linkedin"].includes(platform);
 
   useEffect(() => {
     function checkExtension() {

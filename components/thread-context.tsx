@@ -15,6 +15,7 @@ export function ThreadContext({ items, currentId, platform }: { items: ThreadIte
     platform === "youtube" ? "YouTube" :
     platform === "reddit" ? "Reddit" :
     platform === "x" ? "X" :
+    platform === "linkedin" ? "LinkedIn" :
     "source";
 
   async function promote(id: string) {
