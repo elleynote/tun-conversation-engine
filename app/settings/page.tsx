@@ -13,6 +13,7 @@ export default async function SettingsPage() {
     ["Supabase", s.supabase ? "Configured" : "Waiting", s.supabase ? "on" : "", "Database + Edge Functions"],
     ["OpenAI", automation.openAIConnected ? "Configured" : "Waiting", automation.openAIConnected ? "on" : "", "Classification + drafting"],
     ["Syften", automation.syftenConnected ? "Configured" : "Waiting", automation.syftenConnected ? "on" : "", "Multi-platform discovery (Reddit, X / Twitter, YouTube)"],
+    ["Apify", s.apify ? "Configured" : "Waiting", s.apify ? "on" : "", "Instagram hashtag & discussion monitoring (Group 1 & 2)"],
     ["YouTube comments", automation.youtubeConnected ? "Connected" : "Waiting for API key", automation.youtubeConnected ? "on" : "", "Fetch public comments from Syften-discovered YouTube videos"],
     ["Reddit posting", "Extension ready", "on", "1-click auto-posting via Tun Chrome Extension"],
     ["X (Twitter) posting", "Extension ready", "on", "1-click auto-reply via Tun Chrome Extension"],

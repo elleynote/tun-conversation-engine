@@ -18,6 +18,10 @@ export function hasYouTube() {
   return Boolean(process.env.YOUTUBE_API_KEY);
 }
 
+export function hasApify() {
+  return Boolean(process.env.APIFY_API_TOKEN);
+}
+
 export function hasRedditPublishing() {
   if (process.env.REDDIT_PUBLISHING_ENABLED !== "true") return false;
   return Boolean(process.env.REDDIT_DEVVIT_APP_SLUG || (process.env.REDDIT_CLIENT_ID && process.env.REDDIT_CLIENT_SECRET && process.env.REDDIT_REFRESH_TOKEN));
@@ -30,6 +34,7 @@ export function connectionStatus() {
     openai: hasOpenAI(),
     syften: hasSyften(),
     youtube: hasYouTube(),
+    apify: hasApify(),
     redditPublishing: hasRedditPublishing(),
     netlify: Boolean(process.env.URL || process.env.SITE_ID || process.env.SITE_NAME || process.env.NETLIFY || process.env.DEPLOY_ID),
   };
