@@ -36,18 +36,20 @@ export default async function DashboardPage() {
       <section className="card panel automation-panel">
         <div className="section-head">
           <div><div className="eyebrow">Automation</div><h2>Pipeline status</h2></div>
-          <span className={`badge ${automation.syftenConnected && automation.openAIConnected ? "green" : "amber"}`}>
-            {automation.syftenConnected && automation.openAIConnected ? "Running" : "Setup required"}
+          <span className={`badge ${(automation.syftenConnected || automation.apifyConnected) && automation.openAIConnected ? "green" : "amber"}`}>
+            {(automation.syftenConnected || automation.apifyConnected) && automation.openAIConnected ? "Running" : "Setup required"}
           </span>
         </div>
         <div className="automation-grid">
           <div className="automation-item"><span className={`status-dot ${automation.syftenConnected ? "on" : ""}`} /><div><strong>Syften</strong><div className="small muted">{automation.syftenConnected ? "Connected" : "Waiting for token"}</div></div></div>
+          <div className="automation-item"><span className={`status-dot ${automation.apifyConnected ? "on" : ""}`} /><div><strong>Apify (Instagram/FB)</strong><div className="small muted">{automation.apifyConnected ? "Connected" : "Waiting for token"}</div></div></div>
           <div className="automation-item"><span className={`status-dot ${automation.openAIConnected ? "on" : ""}`} /><div><strong>OpenAI</strong><div className="small muted">{automation.openAIConnected ? "Connected" : "Waiting for API key"}</div></div></div>
           <div className="automation-item"><span className={`status-dot ${automation.youtubeConnected ? "on" : ""}`} /><div><strong>YouTube</strong><div className="small muted">{automation.youtubeConnected ? "Comments connected" : "Waiting for API key / first run"}</div></div></div>
+          <div className="automation-item"><div><div className="label">Last Instagram/FB check</div><strong>{automation.lastApifyCheck ? relativeTime(automation.lastApifyCheck) : "Waiting for run"}</strong></div></div>
           <div className="automation-item"><div><div className="label">Last Syften check</div><strong>{automation.lastSyftenCheck ? relativeTime(automation.lastSyftenCheck) : "Waiting for next run"}</strong></div></div>
           <div className="automation-item"><div><div className="label">Last YouTube check</div><strong>{automation.lastYouTubeCheck ? relativeTime(automation.lastYouTubeCheck) : "Waiting for first run"}</strong></div></div>
           <div className="automation-item"><div><div className="label">Last AI pipeline run</div><strong>{automation.lastPipelineRun ? relativeTime(automation.lastPipelineRun) : "Waiting for next run"}</strong></div></div>
-          <div className="automation-item"><div><div className="label">Syften matches today</div><strong>{automation.newToday}</strong></div></div>
+          <div className="automation-item"><div><div className="label">Discovered conversations today</div><strong>{automation.newToday}</strong></div></div>
         </div>
       </section>
 

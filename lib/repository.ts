@@ -1,5 +1,5 @@
 import { demoOpportunities, demoProducts } from "./demo-data";
-import { hasOpenAI, hasSyften, isLiveMode } from "./runtime";
+import { hasOpenAI, hasSyften, hasApify, isLiveMode } from "./runtime";
 import type { ActivityItem, AutomationStatus, OpportunityStatus, OpportunityView, Product, ThreadItem } from "./types";
 import { cleanSourceText, relativeTime } from "./utils";
 import { createAdminClient } from "./supabase/admin";
@@ -185,8 +185,10 @@ export async function getAutomationStatus(): Promise<AutomationStatus> {
       syftenConnected: false,
       openAIConnected: false,
       youtubeConnected: false,
+      apifyConnected: true,
       lastSyftenCheck: null,
       lastYouTubeCheck: null,
+      lastApifyCheck: null,
       lastPipelineRun: null,
       lastSyftenCursor: null,
       newToday: 0,
@@ -198,7 +200,7 @@ export async function getAutomationStatus(): Promise<AutomationStatus> {
   today.setUTCHours(0, 0, 0, 0);
 
   const [{ data: settings }, { count }] = await Promise.all([
-    supabase.from("settings").select("key,value").in("key", ["syften_cursor", "syften_last_run", "youtube_last_run", "pipeline_last_run"]),
+    supabase.from("settings").select("key,value").in("key", ["syften_cursor", "syften_last_run", "youtube_last_run", "pipeline_last_run", "apify_last_run"]),
     supabase.from("opportunities").select("id", { count: "exact", head: true }).gte("detected_at", today.toISOString()),
   ]);
 
@@ -206,14 +208,17 @@ export async function getAutomationStatus(): Promise<AutomationStatus> {
   const syftenRun: any = values.get("syften_last_run");
   const youtubeRun: any = values.get("youtube_last_run");
   const pipelineRun: any = values.get("pipeline_last_run");
+  const apifyRun: any = values.get("apify_last_run");
   const cursor: any = values.get("syften_cursor");
 
   return {
     syftenConnected: Boolean(syftenRun?.at || cursor?.matched_on || hasSyften()),
     openAIConnected: Boolean(pipelineRun?.at || hasOpenAI()),
     youtubeConnected: Boolean(youtubeRun?.at && youtubeRun?.ok !== false && (!Array.isArray(youtubeRun?.errors) || youtubeRun.errors.length === 0)),
+    apifyConnected: Boolean(apifyRun?.at || hasApify()),
     lastSyftenCheck: syftenRun?.at ?? null,
     lastYouTubeCheck: youtubeRun?.at ?? null,
+    lastApifyCheck: apifyRun?.at ?? null,
     lastPipelineRun: pipelineRun?.at ?? null,
     lastSyftenCursor: cursor?.matched_on ?? null,
     newToday: count ?? 0,

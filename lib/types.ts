@@ -82,8 +82,10 @@ export type AutomationStatus = {
   syftenConnected: boolean;
   openAIConnected: boolean;
   youtubeConnected: boolean;
+  apifyConnected: boolean;
   lastSyftenCheck: string | null;
   lastYouTubeCheck: string | null;
+  lastApifyCheck: string | null;
   lastPipelineRun: string | null;
   lastSyftenCursor: string | null;
   newToday: number;
@@ -113,4 +115,3 @@ export type OpportunityView = {
   activity?: ActivityItem[];
   thread_items?: ThreadItem[];
 };
-
