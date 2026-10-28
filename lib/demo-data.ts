@@ -52,7 +52,7 @@ export const demoProducts: Product[] = [
 const now = Date.now();
 export const demoOpportunities: OpportunityView[] = [
   {
-    id: "demo-1", platform: "Reddit", community: "r/hayeren", author: "diaspora_learner", title: "Where should I start with Western Armenian?",
+    id: "demo-1", platform: "reddit", community: "r/hayeren", author: "diaspora_learner", title: "Where should I start with Western Armenian?",
     content: "My grandparents spoke Western Armenian but I never learned it. Are there any good online resources for a complete beginner?",
     original_url: "https://www.reddit.com/", published_at: new Date(now - 9 * 60000).toISOString(), detected_at: new Date(now - 8 * 60000).toISOString(), relativeTime: "8m ago", status: "awaiting_review", matched_filter: "western armenian learning",
     classification: { relevance_score: 5, intent: "heritage_learning", dialect: "western", commercial_intent: 4, recommended_product_key: "tun_school", recommended_product_keys: ["tun_school"], response_mode: "answer_and_recommend", answer_confidence: 0.95, should_reply: true, confidence: 0.97, reason: "The user has clear long-term Western Armenian learning intent and a heritage motivation." },
@@ -60,21 +60,38 @@ export const demoOpportunities: OpportunityView[] = [
     draft: { body: "If your grandparents spoke Western Armenian, I would start with resources that explicitly teach the Western dialect rather than general Armenian material. Tun teaches both dialects, so you can focus on Western Armenian from the beginning, and they currently offer 4 lessons for $1 if you want to try it first.", version: 1, status: "generated" },
   },
   {
-    id: "demo-2", platform: "Reddit", community: "r/translator", author: "phrase_help", title: "How do I say happy birthday in Armenian?",
+    id: "demo-2", platform: "instagram", community: "#learnarmenian", author: "diaspora_polyglot", title: "Question about Western Armenian verbs",
+    content: "I started learning Western Armenian but conjugation is so confusing! Any online tools for verbs and lessons?",
+    original_url: "https://www.instagram.com/p/DfCiCLMnLTL/", published_at: new Date(now - 25 * 60000).toISOString(), detected_at: new Date(now - 20 * 60000).toISOString(), relativeTime: "20m ago", status: "awaiting_review", matched_filter: "#learnarmenian",
+    classification: { relevance_score: 5, intent: "verb_question", dialect: "western", commercial_intent: 4, recommended_product_key: "tun_school", recommended_product_keys: ["tun_school", "verbs"], response_mode: "answer_and_recommend", answer_confidence: 0.96, should_reply: true, confidence: 0.98, reason: "Clear Western Armenian learning intent and verb question on Instagram." },
+    product: demoProducts[0], products: [demoProducts[0], demoProducts[3]],
+    draft: { body: "Western Armenian verbs differ from Eastern Armenian in several tense forms! Tun (tunapp.com) teaches Western Armenian grammar with structured lessons (they have a 4 lessons for $1 trial), and armenianverbs.com is a dedicated reference tool to look up verb conjugations quickly.", version: 1, status: "generated" },
+  },
+  {
+    id: "demo-3", platform: "x", community: "x.com", author: "armenian_culture", title: "Looking for online Armenian lessons",
+    content: "Does anyone know a good platform or online school to learn conversational Armenian from scratch?",
+    original_url: "https://x.com/armenian/status/1234567890", published_at: new Date(now - 45 * 60000).toISOString(), detected_at: new Date(now - 40 * 60000).toISOString(), relativeTime: "40m ago", status: "awaiting_review", matched_filter: "learn armenian",
+    classification: { relevance_score: 5, intent: "learn_armenian", dialect: "unknown", commercial_intent: 5, recommended_product_key: "tun_school", recommended_product_keys: ["tun_school"], response_mode: "answer_and_recommend", answer_confidence: 0.98, should_reply: true, confidence: 0.99, reason: "Direct question looking for Armenian lessons." },
+    product: demoProducts[0], products: [demoProducts[0]],
+    draft: { body: "Tun Online Armenian School (tunapp.com) is built specifically for conversational Armenian with 1-on-1 teachers for both Eastern and Western dialects. You can try 4 lessons for $1 to see how you like it!", version: 1, status: "generated" },
+  },
+  {
+    id: "demo-4", platform: "facebook", community: "Armenian Diaspora Network", author: "Sarkis Sarkisian", title: "Resources for learning Western Armenian alphabet",
+    content: "Want to teach my children how to read and type in Armenian. What tools or websites do you guys recommend?",
+    original_url: "https://www.facebook.com/", published_at: new Date(now - 2 * 3600000).toISOString(), detected_at: new Date(now - 1.8 * 3600000).toISOString(), relativeTime: "2h ago", status: "awaiting_review", matched_filter: "learn armenian",
+    classification: { relevance_score: 5, intent: "parent_child_learning", dialect: "western", commercial_intent: 4, recommended_product_key: "keyboard", recommended_product_keys: ["tun_school", "keyboard"], response_mode: "answer_and_recommend", answer_confidence: 0.95, should_reply: true, confidence: 0.96, reason: "Parent looking for typing and reading tools for kids." },
+    product: demoProducts[2], products: [demoProducts[0], demoProducts[2]],
+    draft: { body: "For typing in the browser without installing layouts, armeniankeyboard.com is great and supports Western rules. For full speaking, reading, and literacy for kids, Tun Online Armenian School (tunapp.com) has interactive 1-on-1 lessons designed for diaspora learners.", version: 1, status: "generated" },
+  },
+  {
+    id: "demo-5", platform: "reddit", community: "r/translator", author: "phrase_help", title: "How do I say happy birthday in Armenian?",
     content: "I only need the phrase for a card. How do I say happy birthday in Armenian?",
     original_url: "https://www.reddit.com/", published_at: new Date(now - 46 * 60000).toISOString(), detected_at: new Date(now - 44 * 60000).toISOString(), relativeTime: "44m ago", status: "qualified", matched_filter: "armenian translation",
     classification: { relevance_score: 4, intent: "translation", dialect: "unknown", commercial_intent: 2, recommended_product_key: "translator", recommended_product_keys: ["translator"], response_mode: "answer_and_recommend", answer_confidence: 0.86, should_reply: true, confidence: 0.93, reason: "Immediate translation need with no strong long-term learning signal, so recommend the translator rather than a course." },
     product: demoProducts[1], products: [demoProducts[1]], draft: null,
   },
   {
-    id: "demo-3", platform: "Reddit", community: "r/languagelearning", author: "polyglot_newbie", title: "How do I type Armenian on a normal laptop?",
-    content: "I'm learning Armenian and I want to practice writing, but installing layouts on every device is annoying. Is there a browser option?",
-    original_url: "https://www.reddit.com/", published_at: new Date(now - 3 * 3600000).toISOString(), detected_at: new Date(now - 2.9 * 3600000).toISOString(), relativeTime: "3h ago", status: "drafted", matched_filter: "type armenian keyboard",
-    classification: { relevance_score: 5, intent: "typing_armenian", dialect: "unknown", commercial_intent: 4, recommended_product_key: "keyboard", recommended_product_keys: ["tun_school", "keyboard"], response_mode: "answer_and_recommend", answer_confidence: 0.98, should_reply: true, confidence: 0.97, reason: "The immediate task is typing, while the post also has an explicit ongoing learning goal." },
-    product: demoProducts[2], products: [demoProducts[0], demoProducts[2]], draft: { body: "A browser-based keyboard is the easiest option if you move between devices. ArmenianKeyboard.com lets you type and copy Armenian without installing a system layout, and it keeps Eastern and Western rules separate rather than treating them as one identical mapping. Since you're actively learning as well, Tun can help with the reading and writing side over time.", version: 1, status: "generated" },
-  },
-  {
-    id: "demo-4", platform: "Reddit", community: "r/armenia", author: "travel_question", title: "Best time to visit Yerevan?",
+    id: "demo-6", platform: "reddit", community: "r/armenia", author: "travel_question", title: "Best time to visit Yerevan?",
     content: "Thinking about visiting Yerevan next spring. What month has the nicest weather?",
     original_url: "https://www.reddit.com/", published_at: new Date(now - 5 * 3600000).toISOString(), detected_at: new Date(now - 5 * 3600000).toISOString(), relativeTime: "5h ago", status: "ignored", matched_filter: "armenia",
     classification: { relevance_score: 1, intent: "travel", dialect: "unknown", commercial_intent: 0, recommended_product_key: null, recommended_product_keys: [], response_mode: "do_not_reply", answer_confidence: 0, should_reply: false, confidence: 0.99, reason: "Armenia-related but no relevant language need; Elley's rules say not to recommend anything in this case." },
